@@ -9,6 +9,8 @@ open Microsoft.FSharp.NativeInterop
 #nowarn "9"
 #nowarn "51"
 
+open System.Security.Cryptography
+
    
 [<StructuredFormatDisplay("{AsString}")>]
 type Quantization =
@@ -815,15 +817,15 @@ module private JpegKernels =
     module Ballot = 
         [<GLSLIntrinsic("ballotARB({0})", "GL_ARB_shader_ballot", "GL_ARB_gpu_shader_int64")>]
         let ballot (b : bool) : uint64 =
-            failwith ""
+            onlyInShaderCode "ballot"
 
         [<GLSLIntrinsic("gl_SubGroupLtMaskARB", "GL_ARB_shader_ballot", "GL_ARB_gpu_shader_int64")>]
         let lessMask() : uint64 =
-            failwith ""
+            onlyInShaderCode "lessMask"
 
         [<GLSLIntrinsic("gl_SubGroupGtMaskARB", "GL_ARB_shader_ballot", "GL_ARB_gpu_shader_int64")>]
         let greaterMask() : uint64 =
-            failwith ""
+            onlyInShaderCode "greaterMask"
          
     module Tools =
         [<GLSLIntrinsic("findMSB({0})")>]
@@ -832,7 +834,11 @@ module private JpegKernels =
 
         [<GLSLIntrinsic("atomicOr({0}, {1})")>]
         let atomicOr (buf : uint32) (v : uint32) : unit =
-            failwith ""
+            onlyInShaderCode "atomicOr"
+
+        [<GLSLIntrinsic("memoryBarrier()")>]
+        let memoryBarrier () : unit =
+            onlyInShaderCode "memoryBarrier"
         
             
     let leadingIsLast (b : bool) =
@@ -842,6 +848,7 @@ module private JpegKernels =
 
         mem.[lid] <- V2i((if b then 1 else 0), lid)
         barrier()
+        Tools.memoryBarrier()
 
         let mutable s = 1
         let mutable d = 2
@@ -850,6 +857,7 @@ module private JpegKernels =
                 mem.[lid] <- add mem.[lid - s] mem.[lid]
 
             barrier()
+            Tools.memoryBarrier()
             s <- s <<< 1
             d <- d <<< 1
 
@@ -860,6 +868,7 @@ module private JpegKernels =
                 mem.[lid + s] <- add mem.[lid] mem.[lid + s]
                     
             barrier()
+            Tools.memoryBarrier()
             s <- s >>> 1
             d <- d >>> 1
               
@@ -951,6 +960,7 @@ module private JpegKernels =
             // every thread loads the RGB value and stores it in values (as YCbCr)
             values.[lid] <- ycbcr (inputImage.SampleLevel(tc, float imageLevel).XYZ)
             barrier()
+            Tools.memoryBarrier()
 
             // figure out the DCT normalization factors
             let fx = if lc.X = 0 then Constant.Sqrt2Half else 1.0
@@ -968,6 +978,7 @@ module private JpegKernels =
             barrier()
             values.[lid] <- inner
             barrier()
+            Tools.memoryBarrier()
 
             let mutable sum = V3d.Zero
             let mutable i = lc.X
@@ -1156,6 +1167,18 @@ module private Align =
     let next2 (a : int) (v : V2i) =
         V2i(next a v.X, next a v.Y)
 
+[<AutoOpen>]
+module Tools = 
+
+    let toByteArray<'a when 'a : unmanaged> (arr : 'a[]) : byte[] =
+        let handle = GCHandle.Alloc(arr,GCHandleType.Pinned)
+        try
+            let target : byte[] = Array.zeroCreate (sizeof<'a> * arr.Length)
+            Marshal.Copy(handle.AddrOfPinnedObject(), target, 0, target.Length)
+            target
+        finally 
+            handle.Free()
+
 
 type JpegCompressor(runtime : IRuntime) =
     let dct         = runtime.CreateComputeShader JpegKernels.dct
@@ -1338,9 +1361,14 @@ and JpegCompressorInstance internal(parent : JpegCompressor, size : V2i, quality
             ComputeCommand.Dispatch (alignedSize / V2i(8,8))
         ]
 
+
+    //let dctData : array<V4i> = Array.zeroCreate dctBuffer.Count 
+    let codewordData : array<V2i> = Array.zeroCreate codewordBuffer.Count
+
     let codewordCommand =
         [
             ComputeCommand.Sync dctBuffer.Buffer
+            //ComputeCommand.Copy(dctBuffer.[0..], dctData)
             ComputeCommand.Bind parent.CodewordShader
             ComputeCommand.SetInput codewordInput
             ComputeCommand.Dispatch(V2i(int dctBuffer.Count / 64, 3))
@@ -1356,10 +1384,11 @@ and JpegCompressorInstance internal(parent : JpegCompressor, size : V2i, quality
             ComputeCommand.Dispatch(int codewordBuffer.Count / 64)
         ]
        
-    let overallCommand =
-        runtime.Compile [
+    let cmds =
+        [
             yield! dctCommand
             yield! codewordCommand
+            yield ComputeCommand.Copy(codewordBuffer.[0..], codewordData)
             
             yield ComputeCommand.Sync(codewordBuffer.Buffer, ResourceAccess.ShaderWrite, ResourceAccess.ShaderRead)
             yield ComputeCommand.Execute scan
@@ -1369,6 +1398,8 @@ and JpegCompressorInstance internal(parent : JpegCompressor, size : V2i, quality
             yield ComputeCommand.Copy(codewordBuffer.[codewordBuffer.Count - 2 .. codewordBuffer.Count - 1], bitCountBuffer)
         ]
 
+    let overallCommand =
+        runtime.Compile cmds
 
     member x.Quality
         with get() = quality
@@ -1545,6 +1576,17 @@ and JpegCompressorInstance internal(parent : JpegCompressor, size : V2i, quality
         dctInput.Flush()
 
         overallCommand.Run()
+
+        let dctData = Array.zeroCreate (dctBuffer.Count * sizeof<V4i>)
+        dctBuffer.Buffer.Coerce<byte>().Download(0, dctData, 0, dctData.Length)
+        File.writeAllBytes @"C:\volumes\comp\dct" dctData
+
+        let br = toByteArray codewordData
+        File.writeAllBytes @"C:\volumes\comp\codewords" br
+
+        //let codewordData = Array.zeroCreate (codewordBuffer.Count * sizeof<V2i>)
+        //codewordBuffer.Buffer.Coerce<byte>().Download(0, codewordData, 0, codewordData.Length)
+
         x.Download()
 
     member x.Dispose() =

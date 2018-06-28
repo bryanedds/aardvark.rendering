@@ -130,6 +130,7 @@ module Error =
                 let err = GL.GetError()
                 if err <> ErrorCode.NoError then
                     Aardvark.Base.Report.Warn("{0}: {1}",err,str)
+                    System.Diagnostics.Debugger.Break()
                     //raise <| OpenGLException(err, str)
 
         static member SetupDebugOutput() =

@@ -340,6 +340,7 @@ module ``Compute Commands`` =
             }
 
         static member Dispatch (size : V3i) =
+            printfn "%A" (size.X,size.Y,size.Z)
             if size.AnySmallerOrEqual 0 then
                 Command.Nop
             else
