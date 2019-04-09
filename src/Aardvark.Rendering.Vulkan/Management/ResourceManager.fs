@@ -463,7 +463,7 @@ module Resources =
             {
                 icreate = fun (b : IIndirectBuffer) -> device.CreateIndirectBuffer(indexed, b)
                 idestroy = fun b -> device.Delete b
-                ieagerDestroy = true
+                ieagerDestroy = false
             }
         )
 
@@ -501,7 +501,7 @@ module Resources =
             {
                 icreate = fun (b : ITexture) -> device.CreateImage(b)
                 idestroy = fun b -> device.Delete b
-                ieagerDestroy = true
+                ieagerDestroy = false
             }
         )
 
@@ -512,7 +512,7 @@ module Resources =
             {
                 icreate = fun (b : SamplerStateDescription) -> device.CreateSampler(b)
                 idestroy = fun b -> device.Delete b
-                ieagerDestroy = true
+                ieagerDestroy = false
             }
         )
         
@@ -1095,7 +1095,7 @@ module Resources =
                     device.Delete h
                     handle <- None
                 | None -> ()
-            image.Release()
+            //image.Release()
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then

@@ -2133,13 +2133,14 @@ type CommandTask(device : Device, renderPass : RenderPass, command : RuntimeComm
     let compiled = compiler.Compile command
 
     override x.Release() =
-        transact (fun () ->
-            compiled.Dispose()
-            inner.Dispose()
-            cmd.Dispose()
-            pool.Dispose()
-            manager.Dispose()
-        )
+        ()
+        //transact (fun () ->
+        //    compiled.Dispose()
+        //    inner.Dispose()
+        //    cmd.Dispose()
+        //    pool.Dispose()
+        //    manager.Dispose()
+        //)
 
     override x.FramebufferSignature = Some (renderPass :> _)
 

@@ -266,7 +266,16 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Collections">
+          <HintPath>..\..\..\packages\System.Collections\ref\netcore50\System.Collections.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Collections">
           <HintPath>..\..\..\packages\System.Collections\ref\netstandard1.3\System.Collections.dll</HintPath>
@@ -288,7 +297,25 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.ComponentModel">
+          <HintPath>..\..\..\packages\System.ComponentModel\lib\netcore50\System.ComponentModel.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.ComponentModel">
+          <HintPath>..\..\..\packages\System.ComponentModel\ref\netcore50\System.ComponentModel.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.ComponentModel">
           <HintPath>..\..\..\packages\System.ComponentModel\ref\netstandard1.0\System.ComponentModel.dll</HintPath>
@@ -297,7 +324,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.ComponentModel">
           <HintPath>..\..\..\packages\System.ComponentModel\lib\netstandard1.3\System.ComponentModel.dll</HintPath>
@@ -308,7 +335,25 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Diagnostics.Contracts">
+          <HintPath>..\..\..\packages\System.Diagnostics.Contracts\lib\netcore50\System.Diagnostics.Contracts.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Diagnostics.Contracts">
+          <HintPath>..\..\..\packages\System.Diagnostics.Contracts\ref\netcore50\System.Diagnostics.Contracts.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Diagnostics.Contracts">
           <HintPath>..\..\..\packages\System.Diagnostics.Contracts\lib\netstandard1.0\System.Diagnostics.Contracts.dll</HintPath>
@@ -317,7 +362,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Diagnostics.Contracts">
           <HintPath>..\..\..\packages\System.Diagnostics.Contracts\ref\netstandard1.0\System.Diagnostics.Contracts.dll</HintPath>
@@ -328,7 +373,16 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Diagnostics.Debug">
+          <HintPath>..\..\..\packages\System.Diagnostics.Debug\ref\netcore50\System.Diagnostics.Debug.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Diagnostics.Debug">
           <HintPath>..\..\..\packages\System.Diagnostics.Debug\ref\netstandard1.3\System.Diagnostics.Debug.dll</HintPath>
@@ -339,7 +393,25 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Dynamic.Runtime">
+          <HintPath>..\..\..\packages\System.Dynamic.Runtime\lib\netcore50\System.Dynamic.Runtime.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Dynamic.Runtime">
+          <HintPath>..\..\..\packages\System.Dynamic.Runtime\ref\netcore50\System.Dynamic.Runtime.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Dynamic.Runtime">
           <HintPath>..\..\..\packages\System.Dynamic.Runtime\lib\netstandard1.3\System.Dynamic.Runtime.dll</HintPath>
@@ -348,7 +420,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Dynamic.Runtime">
           <HintPath>..\..\..\packages\System.Dynamic.Runtime\ref\netstandard1.3\System.Dynamic.Runtime.dll</HintPath>
@@ -359,7 +431,16 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Globalization">
+          <HintPath>..\..\..\packages\System.Globalization\ref\netcore50\System.Globalization.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Globalization">
           <HintPath>..\..\..\packages\System.Globalization\ref\netstandard1.3\System.Globalization.dll</HintPath>
@@ -379,7 +460,16 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.IO">
+          <HintPath>..\..\..\packages\System.IO\ref\netcore50\System.IO.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.IO">
           <HintPath>..\..\..\packages\System.IO\ref\netstandard1.5\System.IO.dll</HintPath>
@@ -399,7 +489,25 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Linq">
+          <HintPath>..\..\..\packages\System.Linq\lib\netcore50\System.Linq.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Linq">
+          <HintPath>..\..\..\packages\System.Linq\ref\netcore50\System.Linq.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Linq">
           <HintPath>..\..\..\packages\System.Linq\lib\netstandard1.6\System.Linq.dll</HintPath>
@@ -408,7 +516,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Linq">
           <HintPath>..\..\..\packages\System.Linq\ref\netstandard1.6\System.Linq.dll</HintPath>
@@ -419,7 +527,25 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Linq.Expressions">
+          <HintPath>..\..\..\packages\System.Linq.Expressions\lib\netcore50\System.Linq.Expressions.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Linq.Expressions">
+          <HintPath>..\..\..\packages\System.Linq.Expressions\ref\netcore50\System.Linq.Expressions.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Linq.Expressions">
           <HintPath>..\..\..\packages\System.Linq.Expressions\lib\netstandard1.6\System.Linq.Expressions.dll</HintPath>
@@ -428,7 +554,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Linq.Expressions">
           <HintPath>..\..\..\packages\System.Linq.Expressions\ref\netstandard1.6\System.Linq.Expressions.dll</HintPath>
@@ -439,7 +565,25 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Linq.Queryable">
+          <HintPath>..\..\..\packages\System.Linq.Queryable\lib\netcore50\System.Linq.Queryable.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Linq.Queryable">
+          <HintPath>..\..\..\packages\System.Linq.Queryable\ref\netcore50\System.Linq.Queryable.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Linq.Queryable">
           <HintPath>..\..\..\packages\System.Linq.Queryable\ref\netstandard1.0\System.Linq.Queryable.dll</HintPath>
@@ -448,7 +592,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Linq.Queryable">
           <HintPath>..\..\..\packages\System.Linq.Queryable\lib\netstandard1.3\System.Linq.Queryable.dll</HintPath>
@@ -459,7 +603,25 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.ObjectModel">
+          <HintPath>..\..\..\packages\System.ObjectModel\lib\netcore50\System.ObjectModel.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.ObjectModel">
+          <HintPath>..\..\..\packages\System.ObjectModel\ref\netcore50\System.ObjectModel.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.ObjectModel">
           <HintPath>..\..\..\packages\System.ObjectModel\lib\netstandard1.3\System.ObjectModel.dll</HintPath>
@@ -468,7 +630,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.ObjectModel">
           <HintPath>..\..\..\packages\System.ObjectModel\ref\netstandard1.3\System.ObjectModel.dll</HintPath>
@@ -508,7 +670,16 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Reflection">
+          <HintPath>..\..\..\packages\System.Reflection\ref\netcore50\System.Reflection.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Reflection">
           <HintPath>..\..\..\packages\System.Reflection\ref\netstandard1.5\System.Reflection.dll</HintPath>
@@ -519,6 +690,15 @@
     </When>
   </Choose>
   <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Reflection.Emit">
+          <HintPath>..\..\..\packages\System.Reflection.Emit\lib\netcore50\System.Reflection.Emit.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
     <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
       <ItemGroup>
         <Reference Include="System.Reflection.Emit">
@@ -528,7 +708,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Reflection.Emit">
           <HintPath>..\..\..\packages\System.Reflection.Emit\lib\netstandard1.3\System.Reflection.Emit.dll</HintPath>
@@ -539,6 +719,15 @@
     </When>
   </Choose>
   <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Reflection.Emit.ILGeneration">
+          <HintPath>..\..\..\packages\System.Reflection.Emit.ILGeneration\lib\netcore50\System.Reflection.Emit.ILGeneration.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
     <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
       <ItemGroup>
         <Reference Include="System.Reflection.Emit.ILGeneration">
@@ -548,7 +737,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Reflection.Emit.ILGeneration">
           <HintPath>..\..\..\packages\System.Reflection.Emit.ILGeneration\lib\netstandard1.3\System.Reflection.Emit.ILGeneration.dll</HintPath>
@@ -559,6 +748,15 @@
     </When>
   </Choose>
   <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Reflection.Emit.Lightweight">
+          <HintPath>..\..\..\packages\System.Reflection.Emit.Lightweight\lib\netcore50\System.Reflection.Emit.Lightweight.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
     <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
       <ItemGroup>
         <Reference Include="System.Reflection.Emit.Lightweight">
@@ -568,7 +766,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Reflection.Emit.Lightweight">
           <HintPath>..\..\..\packages\System.Reflection.Emit.Lightweight\lib\netstandard1.3\System.Reflection.Emit.Lightweight.dll</HintPath>
@@ -579,7 +777,16 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Reflection.Extensions">
+          <HintPath>..\..\..\packages\System.Reflection.Extensions\ref\netcore50\System.Reflection.Extensions.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Reflection.Extensions">
           <HintPath>..\..\..\packages\System.Reflection.Extensions\ref\netstandard1.0\System.Reflection.Extensions.dll</HintPath>
@@ -590,7 +797,16 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Reflection.Primitives">
+          <HintPath>..\..\..\packages\System.Reflection.Primitives\ref\netcore50\System.Reflection.Primitives.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Reflection.Primitives">
           <HintPath>..\..\..\packages\System.Reflection.Primitives\ref\netstandard1.0\System.Reflection.Primitives.dll</HintPath>
@@ -621,7 +837,16 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Resources.ResourceManager">
+          <HintPath>..\..\..\packages\System.Resources.ResourceManager\ref\netcore50\System.Resources.ResourceManager.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Resources.ResourceManager">
           <HintPath>..\..\..\packages\System.Resources.ResourceManager\ref\netstandard1.0\System.Resources.ResourceManager.dll</HintPath>
@@ -644,7 +869,16 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Runtime">
+          <HintPath>..\..\..\packages\System.Runtime\ref\netcore50\System.Runtime.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Runtime">
           <HintPath>..\..\..\packages\System.Runtime\ref\netstandard1.5\System.Runtime.dll</HintPath>
@@ -664,7 +898,16 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Runtime.Extensions">
+          <HintPath>..\..\..\packages\System.Runtime.Extensions\ref\netcore50\System.Runtime.Extensions.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Runtime.Extensions">
           <HintPath>..\..\..\packages\System.Runtime.Extensions\ref\netstandard1.5\System.Runtime.Extensions.dll</HintPath>
@@ -686,7 +929,25 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Runtime.InteropServices.WindowsRuntime">
+          <HintPath>..\..\..\packages\System.Runtime.InteropServices.WindowsRuntime\lib\netcore50\System.Runtime.InteropServices.WindowsRuntime.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Runtime.InteropServices.WindowsRuntime">
+          <HintPath>..\..\..\packages\System.Runtime.InteropServices.WindowsRuntime\ref\netcore50\System.Runtime.InteropServices.WindowsRuntime.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Runtime.InteropServices.WindowsRuntime">
           <HintPath>..\..\..\packages\System.Runtime.InteropServices.WindowsRuntime\ref\netstandard1.0\System.Runtime.InteropServices.WindowsRuntime.dll</HintPath>
@@ -695,7 +956,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Runtime.InteropServices.WindowsRuntime">
           <HintPath>..\..\..\packages\System.Runtime.InteropServices.WindowsRuntime\lib\netstandard1.3\System.Runtime.InteropServices.WindowsRuntime.dll</HintPath>
@@ -706,7 +967,16 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Text.Encoding">
+          <HintPath>..\..\..\packages\System.Text.Encoding\ref\netcore50\System.Text.Encoding.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Text.Encoding">
           <HintPath>..\..\..\packages\System.Text.Encoding\ref\netstandard1.3\System.Text.Encoding.dll</HintPath>
@@ -717,7 +987,25 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Threading">
+          <HintPath>..\..\..\packages\System.Threading\lib\netcore50\System.Threading.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Threading">
+          <HintPath>..\..\..\packages\System.Threading\ref\netcore50\System.Threading.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Threading">
           <HintPath>..\..\..\packages\System.Threading\lib\netstandard1.3\System.Threading.dll</HintPath>
@@ -726,7 +1014,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Threading">
           <HintPath>..\..\..\packages\System.Threading\ref\netstandard1.3\System.Threading.dll</HintPath>
@@ -737,7 +1025,16 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0'">
+      <ItemGroup>
+        <Reference Include="System.Threading.Tasks">
+          <HintPath>..\..\..\packages\System.Threading.Tasks\ref\netcore50\System.Threading.Tasks.dll</HintPath>
+          <Private>False</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Threading.Tasks">
           <HintPath>..\..\..\packages\System.Threading.Tasks\ref\netstandard1.3\System.Threading.Tasks.dll</HintPath>
@@ -748,7 +1045,7 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Threading.Thread">
           <HintPath>..\..\..\packages\System.Threading.Thread\lib\netstandard1.3\System.Threading.Thread.dll</HintPath>
@@ -768,7 +1065,7 @@
     </When>
   </Choose>
   <Choose>
-    <When Condition="($(TargetFrameworkIdentifier) == '.NETCoreApp' And $(TargetFrameworkVersion) == 'v2.0') Or ($(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0')">
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETStandard' And $(TargetFrameworkVersion) == 'v2.0'">
       <ItemGroup>
         <Reference Include="System.Threading.ThreadPool">
           <HintPath>..\..\..\packages\System.Threading.ThreadPool\lib\netstandard1.3\System.Threading.ThreadPool.dll</HintPath>
