@@ -690,6 +690,12 @@ type ShaderStage =
     | Geometry = 4
     | Fragment = 5
     | Compute = 6
+    | Raygen = 7
+    | AnyHit = 8
+    | ClosestHit = 9
+    | Miss = 10
+    | Intersection = 11
+    | Callable = 12
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module ShaderStage =

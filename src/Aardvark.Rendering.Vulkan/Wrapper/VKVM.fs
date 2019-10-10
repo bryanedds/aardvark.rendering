@@ -1,5 +1,7 @@
 ﻿namespace Aardvark.Rendering.Vulkan
 
+open Aardvark.Rendering.Vulkan.NVRayTracing
+
 open System
 open System.Runtime.InteropServices
 open System.Runtime.CompilerServices
@@ -791,6 +793,8 @@ module VKVM =
         let inline usizeof<'a> = uint32 sizeof<'a>
         let inline nsizeof<'a> = nativeint sizeof<'a>
 
+        type CustomCommandDelegate = delegate of VkCommandBuffer -> unit
+
     type CommandStream() =
         static let ptrSize = nsizeof<nativeint>
 
@@ -801,6 +805,9 @@ module VKVM =
 
         let mutable prev : Option<CommandStream> = None
         let mutable next : Option<CommandStream> = None
+
+        // Keep references to avoid GC
+        let mutable traceCmdDelegates = List.empty
 
         let mutable handle = 
             let handle = NativePtr.alloc 1
@@ -896,6 +903,7 @@ module VKVM =
                     length <- 0n
                     count <- 0u
                     position <- 0n
+                    traceCmdDelegates <- List.empty
 
 
                     f
@@ -1145,6 +1153,32 @@ module VKVM =
                     Stride = stride
                 )
             x.Append(&cmd)
+
+        member x.TraceRays(raygenShaderBindingTableBuffer : VkBuffer, 
+                           raygenShaderBindingOffset : VkDeviceSize,
+                           missShaderBindingTableBuffer : VkBuffer, 
+                           missShaderBindingOffset : VkDeviceSize, 
+                           missShaderBindingStride : VkDeviceSize,
+                           hitShaderBindingTableBuffer : VkBuffer,
+                           hitShaderBindingOffset : VkDeviceSize,
+                           hitShaderBindingStride : VkDeviceSize,
+                           callableShaderBindingTableBuffer : VkBuffer,
+                           callableShaderBindingOffset : VkDeviceSize,
+                           callableShaderBindingStride : VkDeviceSize,
+                           width : uint32,
+                           height : uint32,
+                           depth : uint32) =
+            let del = new CustomCommandDelegate(fun commandBuffer ->
+                VkRaw.vkCmdTraceRaysNV (commandBuffer, raygenShaderBindingTableBuffer, raygenShaderBindingOffset,
+                    missShaderBindingTableBuffer, missShaderBindingOffset, missShaderBindingStride,
+                    hitShaderBindingTableBuffer, hitShaderBindingOffset, hitShaderBindingStride,
+                    callableShaderBindingTableBuffer, callableShaderBindingOffset, callableShaderBindingStride,
+                    width, height, depth)
+                printf "%s" "YOOOOOOO"
+            )
+
+            traceCmdDelegates <- del::traceCmdDelegates
+            x.Custom(Marshal.GetFunctionPointerForDelegate del)        
 
         member x.Dispatch(gx : uint32, gy : uint32, gz : uint32) =
             let mutable cmd =

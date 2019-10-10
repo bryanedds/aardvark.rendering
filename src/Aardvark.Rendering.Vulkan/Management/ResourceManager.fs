@@ -3,9 +3,12 @@
 open System
 open System.Threading
 open System.Runtime.CompilerServices
+open System.Collections.Generic
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
+open Aardvark.Rendering.Vulkan.Raytracing
+open Aardvark.Rendering.Vulkan.NVRayTracing
 open Microsoft.FSharp.NativeInterop
 
 #nowarn "9"
@@ -975,6 +978,123 @@ module Resources =
         override x.Free(p : VkPipeline) =
             VkRaw.vkDestroyPipeline(renderPass.Device.Handle, p, NativePtr.zero)
 
+    type RaytracingPipelineResource(owner : IResourceCache, key : list<obj>, 
+                                    device : Device, desc : IMod<Raytracing.PipelineDescription>) =
+        inherit AbstractResourceLocation<Raytracing.Pipeline>(owner, key)
+        
+        let mutable handle = None
+        let mutable version = 0
+
+        override x.Create() =
+            ()
+
+        override x.Destroy() =
+            handle |> Option.iter Raytracing.Pipeline.delete
+                
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let desc = desc.GetValue token
+
+                let changed =
+                    handle |> Option.map (fun p -> p.Description <> desc)
+                           |> Option.defaultValue true
+
+                if changed then
+                    handle |> Option.iter Raytracing.Pipeline.delete
+                    handle <- Some <| Raytracing.Pipeline.create device desc
+                    inc &version
+                else
+                    ()
+
+                { handle = handle.Value; version = version }
+            else
+                { handle = handle.Value; version = version }
+
+    type InstanceBufferResource(owner : IResourceCache, key : list<obj>,
+                                device : Device, input : IMod<VkGeometryInstance list>) =
+        inherit MutableResourceLocation<VkGeometryInstance list, InstanceBuffer>(
+            owner, key, 
+            input,
+            {
+                mcreate     = fun instances -> InstanceBuffer.create device instances
+                mdestroy    = fun b -> InstanceBuffer.delete b
+                mtryUpdate  = fun b v -> InstanceBuffer.tryUpdate v b
+            }
+        )
+
+    type ShaderBindingTableResource(owner : IResourceCache, key : list<obj>,
+                                    device : Device,
+                                    pipeline : IResourceLocation<Raytracing.Pipeline>,
+                                    entries : IMod<ShaderBindingTableEntries>) =
+        inherit AbstractResourceLocation<ShaderBindingTable>(owner, key)
+        
+        let mutable handle = None
+        let mutable version = 0
+
+        override x.Create() =
+            pipeline.Acquire()
+
+        override x.Destroy() =
+            pipeline.Release()
+            handle |> Option.iter ShaderBindingTable.delete
+                
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let entries = entries.GetValue token
+                let pipeline = (pipeline.Update token).handle.Handle
+
+                // TODO: Does this make sense? Comparing VkPipeline seems sketchy
+                let changed =
+                    handle |> Option.map (fun x -> x.Entries <> entries || x.Pipeline <> pipeline)
+                           |> Option.defaultValue true
+
+                let cannotUpdate =
+                    handle |> Option.map (fun x -> changed && not <| ShaderBindingTable.tryUpdate pipeline entries x)
+                           |> Option.defaultValue true
+
+                if changed && cannotUpdate then
+                    handle |> Option.iter ShaderBindingTable.delete
+                    handle <- Some <| ShaderBindingTable.create device pipeline entries
+                    inc &version
+                else
+                    ()
+
+                { handle = handle.Value; version = version }
+            else
+                { handle = handle.Value; version = version }
+
+    type AccelerationStructureResource(owner : IResourceCache, key : list<obj>, 
+                                       device : Device, desc : IMod<AccelerationStructureDescription>) =
+        inherit AbstractResourceLocation<AccelerationStructure>(owner, key)
+
+        let mutable handle = None
+        let mutable version = 0
+
+        override x.Create() =
+            ()
+
+        override x.Destroy() =
+            handle |> Option.iter AccelerationStructure.delete
+                
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let desc = desc.GetValue token
+
+                let changed =
+                    handle |> Option.map (fun x -> x.Description <> desc)
+                           |> Option.defaultValue true
+
+                if changed then
+                    handle |> Option.iter AccelerationStructure.delete
+                    handle <- Some <| AccelerationStructure.create device desc
+                    inc &version
+                else
+                    ()
+
+                { handle = handle.Value; version = version }
+            else
+                { handle = handle.Value; version = version }
+
     type IndirectDrawCallResource(owner : IResourceCache, key : list<obj>, indexed : bool, calls : IResourceLocation<IndirectBuffer>) =
         inherit AbstractPointerResourceWithEquality<DrawCall>(owner, key)
 
@@ -1199,6 +1319,11 @@ type ResourceManager(user : IResourceUser, device : Device) =
     let colorBlendStateCache    = NativeResourceLocationCache<VkPipelineColorBlendStateCreateInfo>(user)
     let pipelineCache           = NativeResourceLocationCache<VkPipeline>(user)
 
+    let raytracingPipelineCache     = ResourceLocationCache<Raytracing.Pipeline>(user)
+    let accelerationStructureCache  = ResourceLocationCache<AccelerationStructure>(user)
+    let instanceBufferCache         = ResourceLocationCache<InstanceBuffer>(user)
+    let shaderBindingTableCache     = ResourceLocationCache<ShaderBindingTable>(user)
+
     let drawCallCache           = NativeResourceLocationCache<DrawCall>(user)
     let bufferBindingCache      = NativeResourceLocationCache<VertexBufferBinding>(user)
     let descriptorBindingCache  = NativeResourceLocationCache<DescriptorSetBinding>(user)
@@ -1237,6 +1362,11 @@ type ResourceManager(user : IResourceUser, device : Device) =
         rasterizerStateCache.Clear()
         colorBlendStateCache.Clear()
         pipelineCache.Clear()
+
+        raytracingPipelineCache.Clear()
+        accelerationStructureCache.Clear()
+        instanceBufferCache.Clear()
+        shaderBindingTableCache.Clear()
 
         drawCallCache.Clear()
         bufferBindingCache.Clear()
@@ -1480,6 +1610,41 @@ type ResourceManager(user : IResourceUser, device : Device) =
 
         )
 
+    member x.CreateRaytracingPipeline(desc : IMod<Raytracing.PipelineDescription>) =
+        let key = [ desc :> obj ]
+        raytracingPipelineCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new RaytracingPipelineResource(
+                    cache, key, device, desc
+                )
+        )
+
+    member x.CreateAccelerationStructure(desc : IMod<AccelerationStructureDescription>) =
+        let key = [ desc :> obj ]
+        accelerationStructureCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new AccelerationStructureResource(
+                    cache, key, device, desc
+                )
+        )
+
+    member x.CreateInstanceBuffer(instances : IMod<VkGeometryInstance list>) =
+        let key = [ instances :> obj ]
+        instanceBufferCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new InstanceBufferResource(cache, key, device, instances)
+        )
+
+    member x.CreateShaderBindingTable(pipeline : IResourceLocation<Raytracing.Pipeline>, entries : IMod<ShaderBindingTableEntries>) =
+        let key = [ entries :> obj ]
+        shaderBindingTableCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new ShaderBindingTableResource(cache, key, device, pipeline, entries)
+        )
 
     member x.CreateDrawCall(indexed : bool, calls : IMod<list<DrawCallInfo>>) =
         drawCallCache.GetOrCreate([indexed :> obj; calls :> obj], fun cache key -> new DirectDrawCallResource(cache, key, indexed, calls))

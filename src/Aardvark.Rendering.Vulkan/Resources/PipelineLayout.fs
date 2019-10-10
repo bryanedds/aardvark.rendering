@@ -8,6 +8,7 @@ open Aardvark.Base
 open Aardvark.Base.Sorting
 open Aardvark.Base.Rendering
 open Aardvark.Rendering.Vulkan
+open Aardvark.Rendering.Vulkan.NVRayTracing
 open Microsoft.FSharp.NativeInterop
 
 #nowarn "9"
@@ -23,6 +24,12 @@ module VkShaderStageFlags =
             ShaderStage.Geometry, VkShaderStageFlags.GeometryBit
             ShaderStage.Fragment, VkShaderStageFlags.FragmentBit
             ShaderStage.Compute, VkShaderStageFlags.ComputeBit
+            ShaderStage.Raygen, VkShaderStageFlags.RaygenBitNv
+            ShaderStage.AnyHit, VkShaderStageFlags.AnyHitBitNv
+            ShaderStage.ClosestHit, VkShaderStageFlags.ClosestHitBitNv
+            ShaderStage.Miss, VkShaderStageFlags.MissBitNv
+            ShaderStage.Intersection, VkShaderStageFlags.IntersectionBitNv
+            ShaderStage.Callable, VkShaderStageFlags.CallableBitNv
         ]
         
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
