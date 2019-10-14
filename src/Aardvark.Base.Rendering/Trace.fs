@@ -3,17 +3,26 @@
 open System
 open Aardvark.Base.Incremental
 
-type Geometry =
-    | Triangles of vertexBuffer: IBackendBuffer * indexBuffer : option<IBackendBuffer> //TODO: BufferView?
-    | AABBs of buffer : IBackendBuffer
+// TODO: What am I supposed to use here?
+type MyBuffer = {
+    buffer : IBackendBuffer
+    count : int
+    offset : nativeint
+    format : Type
+}
+
+type TraceGeometry =
+    | Triangles of vertexBuffer: MyBuffer * indexBuffer : option<MyBuffer>
+    | AABBs of buffer : MyBuffer
 
 type IAccelerationStructure =
-    abstract member Geometries : list<Geometry>
+    abstract member Handle : obj
+    abstract member Geometries : list<TraceGeometry>
 
 type IAccelerationStructureRuntime =
     inherit IBufferRuntime
 
-    abstract member CreateAccelerationStructure : list<Geometry> -> IAccelerationStructure
+    abstract member CreateAccelerationStructure : list<TraceGeometry> -> IAccelerationStructure
     abstract member DeleteAccelerationStructure : IAccelerationStructure -> unit
 
 
@@ -27,8 +36,8 @@ type TraceObject = {
 }
 
 type TraceScene = {
-    raygenShader    : obj
-    missShaders     : list<obj>
+    raygenShader    : byte[]
+    missShaders     : list<byte[]>
     objects         : list<TraceObject>
     globals         : SymbolDict<IMod>              
     buffers         : SymbolDict<IBackendBuffer>    // TODO: Adaptive

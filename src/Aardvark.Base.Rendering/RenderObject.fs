@@ -473,7 +473,6 @@ module Geometry =
 type RuntimeCommand =
     | EmptyCmd
     | RenderCmd of objects : aset<IRenderObject>
-    | TraceCmd of raygenShader : IMod<byte[]> * missShaders : alist<byte[]> * hitGroups : alist<obj> * objects : aset<IRenderObject>
     | OrderedCmd of commands : alist<RuntimeCommand>
     | IfThenElseCmd of condition : IMod<bool> * ifTrue : RuntimeCommand * ifFalse : RuntimeCommand
     | ClearCmd of colors : Map<Symbol, IMod<C4f>> * depth : Option<IMod<float>> * stencil : Option<IMod<uint32>>
@@ -489,9 +488,6 @@ type RuntimeCommand =
 
     static member Render(objects : aset<IRenderObject>) =
         RuntimeCommand.RenderCmd(objects)
-
-    static member Trace(raygenShader : IMod<byte[]>, missShaders : alist<byte[]>, hitGroups : alist<obj>, objects : aset<IRenderObject>) =
-        RuntimeCommand.TraceCmd(raygenShader, missShaders, hitGroups, objects)
         
     static member Dispatch(shader : IComputeShader, groups : IMod<V3i>, arguments : Map<string, obj>) =
         RuntimeCommand.DispatchCmd(shader, groups, arguments)

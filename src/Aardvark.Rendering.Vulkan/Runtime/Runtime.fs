@@ -7,6 +7,7 @@ open System.Runtime.InteropServices
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Rendering.Vulkan
+open Aardvark.Rendering.Vulkan.Raytracing
 open Microsoft.FSharp.NativeInterop
 open Aardvark.Base.Incremental
 open System.Diagnostics
@@ -14,6 +15,7 @@ open System.Collections.Generic
 open Aardvark.Base.Runtime
 open FShade
 #nowarn "9"
+
 // #nowarn "51"
 
 type private MappedBuffer(d : Device, store : ResizeBuffer) =
@@ -650,6 +652,16 @@ type Runtime(device : Device, shareTextures : bool, shareBuffers : bool, debug :
 
         member x.Compile (commands : list<ComputeCommand>) =
             ComputeCommand.compile commands device
+
+        member x.CreateAccelerationStructure(geometries : list<TraceGeometry>) =
+            AccelerationStructure.createBottomLevel x.Device { geometries = geometries }
+                :> IAccelerationStructure
+            
+        member x.DeleteAccelerationStructure(s : IAccelerationStructure) =
+            AccelerationStructure.delete (unbox s)
+
+        member x.CompileTrace(scene : TraceScene) =
+            new TraceTask(x.Device, scene) :> ITraceTask
 
         member x.Copy<'a when 'a : unmanaged>(src : NativeTensor4<'a>, fmt : Col.Format, dst : ITextureSubResource, dstOffset : V3i, size : V3i) =
             x.Copy(src, fmt, dst, dstOffset, size)

@@ -798,6 +798,7 @@ and IRuntime =
     inherit IBufferRuntime
     inherit ITextureRuntime
     inherit IComputeRuntime
+    inherit ITraceRuntime
     abstract member DeviceCount : int
 
     abstract member OnDispose : Microsoft.FSharp.Control.IEvent<unit>

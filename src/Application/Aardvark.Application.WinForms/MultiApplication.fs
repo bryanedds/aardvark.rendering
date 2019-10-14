@@ -390,6 +390,10 @@ and MultiRuntime(runtimes : IRuntime[]) =
         member x.Run (commands : list<ComputeCommand>) = failwith ""
         member x.Compile (commands : list<ComputeCommand>) = failwith ""
 
+        member x.CreateAccelerationStructure(geometries : list<TraceGeometry>) = failwith ""
+        member x.DeleteAccelerationStructure(s : IAccelerationStructure) = failwith ""
+        member x.CompileTrace(scene : TraceScene) = failwith ""
+
         member x.Clear(fbo : IFramebuffer, clearColors : Map<Symbol,C4f>, depth : Option<float>, stencil : Option<int>) = failwith "not implemented"
 
         member x.ClearColor(texture : IBackendTexture, color : C4f) = failwith "not implemented"

@@ -525,6 +525,15 @@ type Runtime(ctx : Context, shareTextures : bool, shareBuffers : bool) =
                     ()
             }
 
+        member x.CreateAccelerationStructure(geometries : list<TraceGeometry>) =
+            failwith "Not supported by GL backend"
+            
+        member x.DeleteAccelerationStructure(s : IAccelerationStructure) =
+            failwith "Not supported by GL backend"
+
+        member x.CompileTrace(scene : TraceScene) =
+            failwith "Not supported by GL backend"
+
         member x.Clear(fbo : IFramebuffer, clearColors : Map<Symbol, C4f>, depth : Option<float>, stencil : Option<int>) =
             use __ = ctx.ResourceLock
 

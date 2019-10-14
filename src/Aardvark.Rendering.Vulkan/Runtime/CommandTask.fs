@@ -13,8 +13,6 @@ open System.Diagnostics
 open System.Collections.Generic
 open Aardvark.Base.Runtime
 open Aardvark.Rendering.Vulkan
-open Aardvark.Rendering.Vulkan.Raytracing.Extensions
-open Aardvark.Rendering.Vulkan.NVRayTracing
 open System.Threading.Tasks
 
 #nowarn "9"
@@ -1156,61 +1154,6 @@ module private RuntimeCommands =
                 | None ->
                     ()
 
-    /// Rendering a set of IRenderObjects using ray tracing
-    and TraceCommand(compiler : Compiler, raygenShader : IMod<byte[]>,
-                     missShaders : alist<byte[]>, hitGroups : alist<Raytracing.HitGroup>, objects : aset<IRenderObject>) =
-        inherit PreparedCommand()
-
-        let reader = objects.GetReader()
-
-        let cache = Dict<IRenderObject, Raytracing.PreparedObject>()
-
-        let prepare (o : IRenderObject) =
-            compiler.manager.PrepareRaytracingObject(compiler.renderPass, o)
-
-        let insert (token : AdaptiveToken) (o : IRenderObject) =
-            cache.[o] <- prepare o
-
-        let remove (o : IRenderObject) =
-            match cache.TryRemove(o) with
-                | (true, po) ->
-                    po.Dispose()
-                | _ ->
-                    ()
-
-        override x.InputChanged(_, _) =
-            ()
-
-        override x.Free() =
-            for o in cache.Values do o.Dispose()
-            cache.Clear()
-            reader.Dispose()
-            
-        override x.Compile(token, stream) =
-
-            let deltas = reader.GetOperations token
-
-            // process all pending deltas ensuring that all Adds are processed before all Rems 
-            // allowing resources to 'survive' the update
-            deltas |> HDeltaSet.iter (insert token) (remove)
-
-            let raygenShader = raygenShader.GetValue token
-                
-            let scene = compiler.manager.PrepareRaytracingScene(compiler.renderPass, raygenShader, Seq.toList cache.Values)
-            for r in scene.resources do
-                compiler.resources.Add r
-
-            let pipeline = (scene.pipeline.Update token).handle
-            let sbt = (scene.shaderBindingTable.Update token).handle
-
-            stream.Clear()
-            stream.BindPipeline(VkPipelineBindPoint.RayTracingNv, pipeline.Handle) |> ignore
-            stream.TraceRays(sbt.Handle, sbt.RaygenShaderBindingOffset,
-                             sbt.Handle, sbt.MissShaderBindingOffset, sbt.MissShaderBindingStride,
-                             sbt.Handle, sbt.HitShaderBindingOffset, sbt.HitShaderBindingStride,
-                             sbt.Handle, sbt.CallableShaderBindingOffset, sbt.CallableShaderBindingStride,
-                             1u, 1u, 1u) |> ignore
-
     /// Clearing the current Framebuffer using the supplied values
     and ClearCommand(compiler : Compiler, colors : Map<Symbol, IMod<C4f>>, depth : Option<IMod<float>>, stencil : Option<IMod<uint32>>) =
         inherit PreparedCommand()
@@ -2122,10 +2065,6 @@ module private RuntimeCommands =
 
                 | RuntimeCommand.RenderCmd objects ->
                     new UnorderedRenderObjectCommand(x, objects)
-                        :> PreparedCommand
-
-                | RuntimeCommand.TraceCmd(raygenShader, missShaders, hitGroups, objects) ->
-                    new TraceCommand(x, raygenShader, missShaders, AList.empty, objects)
                         :> PreparedCommand
 
                 | RuntimeCommand.ClearCmd(colors, depth, stencil) ->

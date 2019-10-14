@@ -60,6 +60,7 @@
     <Compile Include="Swapchain\Swapchain.fs" />
     <Compile Include="Management\ResourceManager.fs" />
     <Compile Include="Management\PreparedRenderObject.fs" />
+    <Compile Include="Raytracing\TraceTask.fs" />
     <Compile Include="Raytracing\Object.fs" />
     <Compile Include="Raytracing\Scene.fs" />
     <Compile Include="Raytracing\PreparedObject.fs" />

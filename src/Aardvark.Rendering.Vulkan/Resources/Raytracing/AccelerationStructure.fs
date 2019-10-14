@@ -1,18 +1,14 @@
 ﻿namespace Aardvark.Rendering.Vulkan.Raytracing
 
+#nowarn "9"
+
+open Aardvark.Base
 open Aardvark.Rendering.Vulkan
 open Aardvark.Rendering.Vulkan.NVRayTracing
-
-type TriangleData =
-    | Indexed of vertexBuffer : Buffer * vertexFormat : VkFormat * indexCount : uint32 * indexBuffer : Buffer * indexType : VkIndexType
-    | Unindexed of vertexCount : uint32 * vertexBuffer : Buffer * vertexFormat : VkFormat
-
-type Geometry =
-    | Triangles of TriangleData
-    | AABBs of count : uint32 * buffer : Buffer
+open Microsoft.FSharp.NativeInterop
 
 type BottomLevelDescription = {
-    geometries : Geometry list
+    geometries : TraceGeometry list
 }
 
 type TopLevelDescription = {
@@ -24,35 +20,87 @@ type AccelerationStructureDescription =
     | BottomLevel of BottomLevelDescription
     | TopLevel of TopLevelDescription
 
+[<AbstractClass>]
 type AccelerationStructure =
     class
         inherit Resource<VkAccelerationStructureNV>
         val mutable Description : AccelerationStructureDescription
         val mutable Memory : DevicePtr
         val mutable ScratchBuffer : Buffer option
+        val mutable OpaqueHandle : uint64
 
-        new(device : Device, handle : VkAccelerationStructureNV, description : AccelerationStructureDescription) = 
+        new(device : Device, handle : VkAccelerationStructureNV, description : AccelerationStructureDescription) =
+            let _handle =
+                temporary (fun pHandle ->
+                    VkRaw.vkGetAccelerationStructureHandleNV(device.Handle, handle,
+                                                             uint64 sizeof<uint64>, NativePtr.toNativeInt pHandle)
+                        |> check "failed to get handle of acceleration structure"
+                    NativePtr.read pHandle
+                )
+
             { inherit Resource<_>(device, handle)
               Description = description
               Memory = DevicePtr.Null
-              ScratchBuffer = None }
+              ScratchBuffer = None 
+              OpaqueHandle = _handle }   
+    end
+
+type BottomLevelAccelerationStructure =
+    class
+        inherit AccelerationStructure
+        val mutable Description : BottomLevelDescription
+
+         new(device : Device, handle : VkAccelerationStructureNV, description : BottomLevelDescription) = 
+            { inherit AccelerationStructure(device, handle, BottomLevel description)
+              Description = description }
+
+        interface IAccelerationStructure with
+            member x.Handle = x.OpaqueHandle :> obj
+            member x.Geometries = x.Description.geometries
+    end
+
+type TopLevelAccelerationStructure =
+    class
+        inherit AccelerationStructure
+        val mutable Description : TopLevelDescription
+
+         new(device : Device, handle : VkAccelerationStructureNV, description : TopLevelDescription) = 
+            { inherit AccelerationStructure(device, handle, TopLevel description)
+              Description = description }
     end
 
 [<AutoOpen>]
 module private AccelerationStructureHelpers =
-    open Aardvark.Base.NiceUtilities
+    open System.Runtime.InteropServices
 
-    let getStride =
+    let getBufferHandle (buffer : MyBuffer) =
+        match buffer.buffer with
+            | :? Buffer as b -> b.Handle
+            | _ -> VkBuffer.Null
+
+    let getFormat =
         LookupTable.lookupTable [
-            VkFormat.R32g32b32Sfloat, 12;
-            VkFormat.R32g32Sfloat, 8;
+            typeof<V3f>, VkFormat.R32g32b32Sfloat
+            typeof<V2f>, VkFormat.R32g32Sfloat
+        ]
+
+    let getIndexType =
+        LookupTable.lookupTable [
+            typeof<uint16>, VkIndexType.Uint16
+            typeof<uint32>, VkIndexType.Uint32
+        ]        
+
+    let getStride (t : System.Type) =
+        uint64 <| Marshal.SizeOf(t)
+
+    (*
             VkFormat.R16g16b16Sfloat, 6;
             VkFormat.R16g16Sfloat, 4;
             VkFormat.R16g16Snorm, 4;
             VkFormat.R16g16b16Snorm, 6;
-        ] >> uint64
+     *)
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+(*[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module BottomLevelDescription =
 
     let empty =
@@ -68,7 +116,7 @@ module BottomLevelDescription =
         )
     
     let indexedTriangles vertexBuffer vertexFormat indexCount indexBuffer indexType =
-        empty |> addIndexedTriangles vertexBuffer vertexFormat indexCount indexBuffer indexType
+        empty |> addIndexedTriangles vertexBuffer vertexFormat indexCount indexBuffer indexType*)
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -183,33 +231,32 @@ module AccelerationStructure =
             do! build
             do! barrier
         }
-        s
 
     let createBottomLevel (device : Device) (desc : BottomLevelDescription) =
 
-        let createTriangles (data : TriangleData) =
-            let f = function
-                | Indexed(vertexBuffer, vertexFormat, indexCount, indexBuffer, indexType) ->
-                    VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
-                        vertexBuffer.Handle, 0UL, 0u, getStride vertexFormat, vertexFormat,
-                        indexBuffer.Handle, 0UL, indexCount, indexType, 
-                        VkBuffer.Null, 0UL)
-                | Unindexed(vertexCount, vertexBuffer, vertexFormat) ->
-                    VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
-                        vertexBuffer.Handle, 0UL, vertexCount, getStride vertexFormat, vertexFormat,
-                        VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, 
-                        VkBuffer.Null, 0UL)
+        let createTriangles (vb : MyBuffer) (ib : option<MyBuffer>) =
+            let triangles =
+                match ib with
+                    | None ->
+                        VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
+                            getBufferHandle vb, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
+                            VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, VkBuffer.Null, 0UL)
+                    | Some ib ->
+                        VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
+                            getBufferHandle vb, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
+                            getBufferHandle ib, uint64 ib.offset, uint32 ib.count, getIndexType ib.format,
+                            VkBuffer.Null, 0UL)
 
             VkGeometryNV(
                 VkStructureType.GeometryNv, 0n, 
                 VkGeometryTypeNV.VkGeometryTypeTrianglesNv,
-                VkGeometryDataNV(f data,
+                VkGeometryDataNV(triangles,
                     VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n, VkBuffer.Null, 0u, 0u, 0UL)
                 ),
                 VkGeometryFlagsNV.VkGeometryOpaqueBitNv
             )
  
-        let createAABB (count : uint32) (buffer : Buffer) =
+        let createAABB (buffer : MyBuffer) =
             VkGeometryNV(
                 VkStructureType.GeometryNv, 0n, 
                 VkGeometryTypeNV.VkGeometryTypeAabbsNv,
@@ -219,7 +266,7 @@ module AccelerationStructure =
                         VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, 
                         VkBuffer.Null, 0UL),
                     VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n,
-                        buffer.Handle, count, 24u, 0UL)
+                        getBufferHandle buffer, uint32 buffer.count, 24u, uint64 buffer.offset)
                 ),
                 VkGeometryFlagsNV.VkGeometryOpaqueBitNv
             )
@@ -227,8 +274,8 @@ module AccelerationStructure =
         let geometries =
             desc.geometries |> List.map (fun g ->
                 match g with
-                    | Triangles data ->  createTriangles data
-                    | AABBs(count, buffer) -> createAABB count buffer
+                    | Triangles(vb, ib) ->  createTriangles vb ib
+                    | AABBs buffer -> createAABB buffer
             ) |> List.toArray
 
         native {
@@ -251,8 +298,9 @@ module AccelerationStructure =
             VkRaw.vkCreateAccelerationStructureNV(device.Handle, pCreateInfo, NativePtr.zero, pHandle)
                 |> check "could not create bottom-level acceleration structure"
 
-            let s = new AccelerationStructure(device, !!pHandle, BottomLevel desc)
-            return s |> build info VkBuffer.Null
+            let s = new BottomLevelAccelerationStructure(device, !!pHandle, desc)
+            s |> build info VkBuffer.Null
+            return s
         }
 
     let createTopLevel (device : Device) (desc : TopLevelDescription) =
@@ -285,13 +333,14 @@ module AccelerationStructure =
             VkRaw.vkCreateAccelerationStructureNV(device.Handle, pCreateInfo, NativePtr.zero, pHandle)
                 |> check "could not create top-level acceleration structure"
 
-            let s = new AccelerationStructure(device, !!pHandle, TopLevel desc)
-            return s |> build info instanceBuffer
+            let s = new TopLevelAccelerationStructure(device, !!pHandle, desc)
+            s |> build info instanceBuffer
+            return s
         }
         
     let create (device : Device) = function
-        | TopLevel desc -> createTopLevel device desc
-        | BottomLevel desc -> createBottomLevel device desc
+        | TopLevel desc -> createTopLevel device desc :> AccelerationStructure
+        | BottomLevel desc -> createBottomLevel device desc :> AccelerationStructure
     
     let delete (s : AccelerationStructure) =
         if s.Handle.IsValid then

@@ -54,7 +54,7 @@ type ResourceManagerPreparedObjectExtensions private() =
         let ib = this.CreateIndexBuffer ibView.Buffer
         resources.Add ib
 
-        let info =
+        (*let info =
             Mod.custom (fun t ->
                 let vb = (vb.Update t).handle
                 let ib = (ib.Update t).handle
@@ -64,7 +64,7 @@ type ResourceManagerPreparedObjectExtensions private() =
             )
  
         let blas = this.CreateAccelerationStructure(info)
-        resources.Add blas
+        resources.Add blas*)
 
         {
             device = this.Device
@@ -72,7 +72,7 @@ type ResourceManagerPreparedObjectExtensions private() =
             resources = CSharpList.toList resources
             indexBuffer = ib
             vertexBuffer = vb
-            bottomLevelAS = blas
+            bottomLevelAS = Unchecked.defaultof<_>
         }
 
     [<Extension>]
