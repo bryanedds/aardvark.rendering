@@ -8607,8 +8607,6 @@ type VkWriteDescriptorSet =
 module VkRaw = 
     [<CompilerMessage("activeInstance is for internal use only", 1337, IsError=false, IsHidden=true)>]
     let mutable internal activeInstance : VkInstance = 0n
-    [<CompilerMessage("activeDevice is for internal use only", 1337, IsError=false, IsHidden=true)>]
-    let mutable internal activeDevice : VkDevice = 0n
     [<Literal>]
     let lib = "vulkan-1"
 
@@ -8640,15 +8638,8 @@ module VkRaw =
     extern void vkGetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format, VkFormatProperties* pFormatProperties)
     [<DllImport(lib);SuppressUnmanagedCodeSecurity>]
     extern VkResult vkGetPhysicalDeviceImageFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format, VkImageType _type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkImageFormatProperties* pImageFormatProperties)
-    
-    [<DllImport(lib, EntryPoint="vkCreateDevice");SuppressUnmanagedCodeSecurity>]
-    extern VkResult _vkCreateDevice(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo* pCreateInfo, VkAllocationCallbacks* pAllocator, VkDevice* pDevice)
-    let vkCreateDevice(physicalDevice : VkPhysicalDevice, pCreateInfo : nativeptr<VkDeviceCreateInfo>, pAllocator : nativeptr<VkAllocationCallbacks>, pDevice : nativeptr<VkDevice>) = 
-        let res = _vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice)
-        if res = VkResult.VkSuccess then
-            activeDevice <- NativePtr.read pDevice
-        res
-
+    [<DllImport(lib);SuppressUnmanagedCodeSecurity>]
+    extern VkResult vkCreateDevice(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo* pCreateInfo, VkAllocationCallbacks* pAllocator, VkDevice* pDevice)
     [<DllImport(lib);SuppressUnmanagedCodeSecurity>]
     extern void vkDestroyDevice(VkDevice device, VkAllocationCallbacks* pAllocator)
     [<DllImport(lib);SuppressUnmanagedCodeSecurity>]
@@ -8967,16 +8958,6 @@ module VkRaw =
     [<CompilerMessage("vkImportInstanceDelegate is for internal use only", 1337, IsError=false, IsHidden=true)>]
     let vkImportInstanceDelegate<'a>(name : string) = 
         let ptr = vkGetInstanceProcAddr(activeInstance, name)
-        if ptr = 0n then
-            Log.warn "could not load function: %s" name
-            Unchecked.defaultof<'a>
-        else
-            Report.Line(3, sprintf "loaded function %s (0x%08X)" name ptr)
-            Marshal.GetDelegateForFunctionPointer(ptr, typeof<'a>) |> unbox<'a>
-
-    [<CompilerMessage("vkImportDeviceDelegate is for internal use only", 1337, IsError=false, IsHidden=true)>]
-    let vkImportDeviceDelegate<'a>(name : string) = 
-        let ptr = vkGetDeviceProcAddr(activeDevice, name)
         if ptr = 0n then
             Log.warn "could not load function: %s" name
             Unchecked.defaultof<'a>
@@ -21004,18 +20985,18 @@ module NVRayTracing =
         [<AbstractClass; Sealed>]
         type private Loader<'d> private() =
             static do Report.Begin(3, "[Vulkan] loading VK_NV_ray_tracing")
-            static let s_vkCreateAccelerationStructureNVDel = VkRaw.vkImportDeviceDelegate<VkCreateAccelerationStructureNVDel> "vkCreateAccelerationStructureNV"
-            static let s_vkDestroyAccelerationStructureNVDel = VkRaw.vkImportDeviceDelegate<VkDestroyAccelerationStructureNVDel> "vkDestroyAccelerationStructureNV"
-            static let s_vkGetAccelerationStructureMemoryRequirementsNVDel = VkRaw.vkImportDeviceDelegate<VkGetAccelerationStructureMemoryRequirementsNVDel> "vkGetAccelerationStructureMemoryRequirementsNV"
-            static let s_vkBindAccelerationStructureMemoryNVDel = VkRaw.vkImportDeviceDelegate<VkBindAccelerationStructureMemoryNVDel> "vkBindAccelerationStructureMemoryNV"
-            static let s_vkCmdBuildAccelerationStructureNVDel = VkRaw.vkImportDeviceDelegate<VkCmdBuildAccelerationStructureNVDel> "vkCmdBuildAccelerationStructureNV"
-            static let s_vkCmdCopyAccelerationStructureNVDel = VkRaw.vkImportDeviceDelegate<VkCmdCopyAccelerationStructureNVDel> "vkCmdCopyAccelerationStructureNV"
-            static let s_vkCmdTraceRaysNVDel = VkRaw.vkImportDeviceDelegate<VkCmdTraceRaysNVDel> "vkCmdTraceRaysNV"
-            static let s_vkCreateRayTracingPipelinesNVDel = VkRaw.vkImportDeviceDelegate<VkCreateRayTracingPipelinesNVDel> "vkCreateRayTracingPipelinesNV"
-            static let s_vkGetRayTracingShaderGroupHandlesNVDel = VkRaw.vkImportDeviceDelegate<VkGetRayTracingShaderGroupHandlesNVDel> "vkGetRayTracingShaderGroupHandlesNV"
-            static let s_vkGetAccelerationStructureHandleNVDel = VkRaw.vkImportDeviceDelegate<VkGetAccelerationStructureHandleNVDel> "vkGetAccelerationStructureHandleNV"
-            static let s_vkCmdWriteAccelerationStructuresPropertiesNVDel = VkRaw.vkImportDeviceDelegate<VkCmdWriteAccelerationStructuresPropertiesNVDel> "vkCmdWriteAccelerationStructuresPropertiesNV"
-            static let s_vkCompileDeferredNVDel = VkRaw.vkImportDeviceDelegate<VkCompileDeferredNVDel> "vkCompileDeferredNV"
+            static let s_vkCreateAccelerationStructureNVDel = VkRaw.vkImportInstanceDelegate<VkCreateAccelerationStructureNVDel> "vkCreateAccelerationStructureNV"
+            static let s_vkDestroyAccelerationStructureNVDel = VkRaw.vkImportInstanceDelegate<VkDestroyAccelerationStructureNVDel> "vkDestroyAccelerationStructureNV"
+            static let s_vkGetAccelerationStructureMemoryRequirementsNVDel = VkRaw.vkImportInstanceDelegate<VkGetAccelerationStructureMemoryRequirementsNVDel> "vkGetAccelerationStructureMemoryRequirementsNV"
+            static let s_vkBindAccelerationStructureMemoryNVDel = VkRaw.vkImportInstanceDelegate<VkBindAccelerationStructureMemoryNVDel> "vkBindAccelerationStructureMemoryNV"
+            static let s_vkCmdBuildAccelerationStructureNVDel = VkRaw.vkImportInstanceDelegate<VkCmdBuildAccelerationStructureNVDel> "vkCmdBuildAccelerationStructureNV"
+            static let s_vkCmdCopyAccelerationStructureNVDel = VkRaw.vkImportInstanceDelegate<VkCmdCopyAccelerationStructureNVDel> "vkCmdCopyAccelerationStructureNV"
+            static let s_vkCmdTraceRaysNVDel = VkRaw.vkImportInstanceDelegate<VkCmdTraceRaysNVDel> "vkCmdTraceRaysNV"
+            static let s_vkCreateRayTracingPipelinesNVDel = VkRaw.vkImportInstanceDelegate<VkCreateRayTracingPipelinesNVDel> "vkCreateRayTracingPipelinesNV"
+            static let s_vkGetRayTracingShaderGroupHandlesNVDel = VkRaw.vkImportInstanceDelegate<VkGetRayTracingShaderGroupHandlesNVDel> "vkGetRayTracingShaderGroupHandlesNV"
+            static let s_vkGetAccelerationStructureHandleNVDel = VkRaw.vkImportInstanceDelegate<VkGetAccelerationStructureHandleNVDel> "vkGetAccelerationStructureHandleNV"
+            static let s_vkCmdWriteAccelerationStructuresPropertiesNVDel = VkRaw.vkImportInstanceDelegate<VkCmdWriteAccelerationStructuresPropertiesNVDel> "vkCmdWriteAccelerationStructuresPropertiesNV"
+            static let s_vkCompileDeferredNVDel = VkRaw.vkImportInstanceDelegate<VkCompileDeferredNVDel> "vkCompileDeferredNV"
             static do Report.End(3) |> ignore
             static member vkCreateAccelerationStructureNV = s_vkCreateAccelerationStructureNVDel
             static member vkDestroyAccelerationStructureNV = s_vkDestroyAccelerationStructureNVDel
