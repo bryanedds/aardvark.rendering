@@ -19,8 +19,6 @@ let quad (color : C4b) =
         IndexedGeometry(IndexedGeometryMode.TriangleList, index, 
             SymDict.ofList [
                 DefaultSemantic.Positions, positions :> Array
-                DefaultSemantic.Colors,  Array.init positions.Length (constF color  ) :> Array
-                DefaultSemantic.Normals, Array.init positions.Length (constF V3f.OOI) :> Array
                 DefaultSemantic.DiffuseColorCoordinates, uvs :> System.Array
             ], SymDict.empty)
 

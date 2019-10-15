@@ -93,14 +93,7 @@ module private AccelerationStructureHelpers =
     let getStride (t : System.Type) =
         uint64 <| Marshal.SizeOf(t)
 
-    (*
-            VkFormat.R16g16b16Sfloat, 6;
-            VkFormat.R16g16Sfloat, 4;
-            VkFormat.R16g16Snorm, 4;
-            VkFormat.R16g16b16Snorm, 6;
-     *)
-
-(*[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module BottomLevelDescription =
 
     let empty =
@@ -109,15 +102,21 @@ module BottomLevelDescription =
     let addGeometry geometry info =
         { info with geometries = geometry::info.geometries}
 
-    let addIndexedTriangles vertexBuffer vertexFormat indexCount indexBuffer indexType info =
+    let addIndexedTriangles vertexBuffer indexBuffer info =
         info |> addGeometry (
-            Indexed(vertexBuffer, vertexFormat, indexCount, indexBuffer, indexType)
-                |> Triangles
+            Triangles(vertexBuffer, Some indexBuffer)
+        )
+
+    let addTriangles vertexBuffer info =
+        info |> addGeometry (
+            Triangles(vertexBuffer, None)
         )
     
-    let indexedTriangles vertexBuffer vertexFormat indexCount indexBuffer indexType =
-        empty |> addIndexedTriangles vertexBuffer vertexFormat indexCount indexBuffer indexType*)
+    let indexedTriangles vertexBuffer indexBuffer =
+        empty |> addIndexedTriangles vertexBuffer indexBuffer
 
+    let triangles vertexBuffer =
+        empty |> addTriangles vertexBuffer
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TopLevelDescription =

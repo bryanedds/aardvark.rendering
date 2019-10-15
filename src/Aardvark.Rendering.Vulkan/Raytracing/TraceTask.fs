@@ -40,6 +40,15 @@ type RayHitInterface =
 module DummyHelpers =
     open FShade.GLSL
 
+    let raygenInfo : RayHitInfo =
+        {
+            neededUniforms = Map.ofList ["resultImage", typeof<VkImage>]
+            neededSamplers = Map.empty
+            neededBuffers = Map.empty
+            payloadInType = typeof<unit>
+            payloadOutType = typeof<unit>
+        }
+
     let resultImage : GLSLImage =
         let imageType : GLSLImageType =
             {
