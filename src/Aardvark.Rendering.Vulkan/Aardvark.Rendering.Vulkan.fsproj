@@ -41,6 +41,10 @@
     <Compile Include="Resources\ShaderProgram.fs" />
     <Compile Include="Resources\UniformBuffer.fs" />
     <Compile Include="Resources\DescriptorPool.fs" />
+    <Compile Include="Resources\Raytracing\ShaderBindingTable.fs" />
+    <Compile Include="Resources\Raytracing\TracePipeline.fs" />
+    <Compile Include="Resources\Raytracing\InstanceBuffer.fs" />
+    <Compile Include="Resources\Raytracing\AccelerationStructure.fs" />
     <Compile Include="Resources\DescriptorSet.fs" />
     <Compile Include="Resources\States.fs" />
     <Compile Include="Resources\Pipeline.fs" />
@@ -51,10 +55,6 @@
     <Compile Include="Resources\SparseImage.fs" />
     <Compile Include="Resources\ComputeShader.fs" />
     <Compile Include="Resources\QueryPool.fs" />
-    <Compile Include="Resources\Raytracing\ShaderBindingTable.fs" />
-    <Compile Include="Resources\Raytracing\Pipeline.fs" />
-    <Compile Include="Resources\Raytracing\InstanceBuffer.fs" />
-    <Compile Include="Resources\Raytracing\AccelerationStructure.fs" />
     <Compile Include="Swapchain\Surface.fs" />
     <Compile Include="Swapchain\SwapchainDescription.fs" />
     <Compile Include="Swapchain\Swapchain.fs" />

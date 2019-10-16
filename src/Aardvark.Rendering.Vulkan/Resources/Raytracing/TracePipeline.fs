@@ -4,46 +4,25 @@ open Aardvark.Base
 open Aardvark.Rendering.Vulkan
 open Aardvark.Rendering.Vulkan.NVRayTracing
 
-type ShaderStageCreateInfo = {
-    shaderModule : ShaderModule
-}
-
-type HitGroupType =
-    | Triangles
-    | Procedural
-
-type HitGroupData = {
-    kind : HitGroupType
-    closestHitShader : option<uint32>
-    anyHitShader : option<uint32>
-    intersectionShader : option<uint32>
-}
-
 type ShaderGroupCreateInfo =
     | General of generalShader : uint32
-    | HitGroup of data : HitGroupData
+    | HitGroup of anyHitShader : option<uint32> * closestHitShader : option<uint32> * intersectionShader : option<uint32>
 
-type PipelineDescription = {
+type TracePipelineDescription = {
     layout : PipelineLayout
-    stages : ShaderStageCreateInfo[]
+    stages : ShaderModule[]
     groups : ShaderGroupCreateInfo[]
     maxRecursionDepth : uint32
 }
 
-type Pipeline =
+type TracePipeline =
     class
         inherit Resource<VkPipeline>
-        val mutable Description : PipelineDescription
+        val mutable Description : TracePipelineDescription
 
-        new(device : Device, handle : VkPipeline, description : PipelineDescription) = 
+        new(device : Device, handle : VkPipeline, description : TracePipelineDescription) = 
             { inherit Resource<_>(device, handle); Description = description }
     end
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module ShaderStageCreateInfo =
-
-    let create (shaderModule : ShaderModule) =
-        { shaderModule = shaderModule }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module ShaderGroupCreateInfo =
@@ -53,41 +32,36 @@ module ShaderGroupCreateInfo =
     let createGeneral (generalShader : uint32) =
         General generalShader
 
-    let createHitGroup (closestHitShader : option<uint32>) (anyHitShader : option<uint32>) (intersectionShader : option<uint32>) =
-        HitGroup {
-            kind = Triangles
-            closestHitShader = closestHitShader
-            anyHitShader = anyHitShader
-            intersectionShader = intersectionShader
-        }
+    let createHitGroup (anyHitShader : option<uint32>) (closestHitShader : option<uint32>) (intersectionShader : option<uint32>) =
+        HitGroup (anyHitShader, closestHitShader, intersectionShader)
 
     let getType = function
         | General _ ->
             VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeGeneralNv
-        | HitGroup d ->
-            match d.kind with
-                | Triangles -> VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeTrianglesHitGroupNv
-                | Procedural -> VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeProceduralHitGroupNv
+        | HitGroup (_, _, None) ->
+            VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeTrianglesHitGroupNv
+        | HitGroup (_, _, Some _) ->
+            VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeProceduralHitGroupNv
 
     let getGeneralShader = function
         | General g -> g
         | _ -> VkShaderUnused
 
-    let getClosestHitShader = function
-        | General _ -> VkShaderUnused
-        | HitGroup d -> d.closestHitShader |> Option.defaultValue VkShaderUnused
-
     let getAnyHitShader = function
-        | General _ -> VkShaderUnused
-        | HitGroup d -> d.anyHitShader |> Option.defaultValue VkShaderUnused
+        | HitGroup (Some anyHit, _, _) -> anyHit
+        | _ -> VkShaderUnused
+
+    let getClosestHitShader = function
+        | HitGroup (_, Some closestHit, _) -> closestHit
+        | _ -> VkShaderUnused
 
     let getIntersectionShader = function
-        | General _ -> VkShaderUnused
-        | HitGroup d -> d.intersectionShader |> Option.defaultValue VkShaderUnused
+        | HitGroup (_, _, Some intersection) -> intersection
+        | _ -> VkShaderUnused
             
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module PipelineDescription =
+module TracePipelineDescription =
 
     let empty = {
         layout = Unchecked.defaultof<_>
@@ -100,13 +74,12 @@ module PipelineDescription =
         { empty with layout = layout
                      maxRecursionDepth = maxRecursionDepth }
 
-    let addShaderStage (shaderModule : ShaderModule) (desc : PipelineDescription) =
-        let stage = ShaderStageCreateInfo.create shaderModule
-        let stages = desc.stages |> Array.append [|stage|]
+    let addShaderStage (shader : ShaderModule) (desc : TracePipelineDescription) =
+        let stages = Array.append desc.stages [|shader|]
         let index = uint32 <| stages.Length - 1
 
         let valid =
-            match shaderModule.Stage with
+            match shader.Stage with
                 | ShaderStage.Raygen
                 | ShaderStage.Miss
                 | ShaderStage.Callable -> true
@@ -119,33 +92,32 @@ module PipelineDescription =
         let g = ShaderGroupCreateInfo.createGeneral index
         
         { desc with stages = stages
-                    groups = desc.groups |> Array.append [|g|] }
+                    groups = Array.append desc.groups [|g|] }
 
-    let addHitShaderStage (anyHit : ShaderStageCreateInfo option)
-                          (closestHit : ShaderStageCreateInfo option)
-                          (intersection : ShaderStageCreateInfo option) 
-                          (desc : PipelineDescription) =
+    let addHitShaderStage (anyHit : ShaderModule option)
+                          (closestHit : ShaderModule option)
+                          (intersection : ShaderModule option) 
+                          (desc : TracePipelineDescription) =
 
-        let addToStages (stage : ShaderStageCreateInfo) (desc : PipelineDescription) =
-            { desc with stages = desc.stages |> Array.append [|stage|] }
+        let addToStages (shader : ShaderModule) (desc : TracePipelineDescription) =
+            { desc with stages = Array.append desc.stages [|shader|] }
 
-        let addToGroup (index : uint32) (stage : ShaderStage) (desc : PipelineDescription) =
-            let data =
+        let addToGroup (index : uint32) (stage : ShaderStage) (desc : TracePipelineDescription) =
+            let anyHit, closestHit, intersection =
                 match Array.last desc.groups with
                     | General _ -> failwith "cannot add hit group shader to general shader group"
-                    | HitGroup data -> data
+                    | HitGroup (x, y, z) -> x, y, z
 
-            let group = 
+            let group =
                 match stage with
                     | ShaderStage.AnyHit ->
-                        { data with anyHitShader = Some index }
+                        HitGroup (Some index, closestHit, intersection)
                     | ShaderStage.ClosestHit ->
-                        { data with closestHitShader = Some index }
+                        HitGroup (anyHit, Some index, intersection)
                     | ShaderStage.Intersection ->
-                        { data with kind = HitGroupType.Procedural; intersectionShader = Some index }
+                        HitGroup (closestHit, anyHit, Some index)
                     | _ ->
                         failwithf "cannot add shader of type %A to hit group" stage
-                |> HitGroup
 
             desc.groups.[desc.groups.Length - 1] <- group
             desc
@@ -161,7 +133,7 @@ module PipelineDescription =
         let valid =
             input
                 |> List.mapi (fun i x ->
-                    x |> Option.map (fun x -> x.shaderModule.Stage = flags.[i])
+                    x |> Option.map (fun x -> x.Stage = flags.[i])
                       |> Option.defaultValue true
                 ) |> List.forall id
 
@@ -176,14 +148,14 @@ module PipelineDescription =
                 | None -> d
                 | Some s -> 
                     let index = uint32 d.stages.Length
-                    d |> addToStages s |> addToGroup index s.shaderModule.Stage
-        ) { desc with groups = desc.groups |> Array.append [|g|] }
+                    d |> addToStages s |> addToGroup index s.Stage
+        ) { desc with groups = Array.append desc.groups [|g|] }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Pipeline =
+module TracePipeline =
 
-    let create (device : Device) (desc : PipelineDescription) =
-
+    let create (device : Device) (desc : TracePipelineDescription) =
+    
         let handle =
             native {
                 let! pName = "main"
@@ -191,7 +163,8 @@ module Pipeline =
                     VkPipelineShaderStageCreateInfo(
                         VkStructureType.PipelineShaderStageCreateInfo, 0n,
                         VkPipelineShaderStageCreateFlags.MinValue,
-                        VkShaderStageFlags.RaygenBitNv, s.shaderModule.Handle,
+                        VkShaderStageFlags.ofShaderStage s.Stage,
+                        s.Handle,
                         pName, NativePtr.zero
                     )
                 )
@@ -224,9 +197,9 @@ module Pipeline =
                 return !!pHandle
             }
 
-        new Pipeline(device, handle, desc)
+        new TracePipeline(device, handle, desc)
 
-    let getShaderBindingTableEntries (p : Pipeline) =
+    let getShaderBindingTableEntries (p : TracePipeline) =
         let entries = ShaderBindingTableEntries.empty
         p.Description.groups |> Array.fold (fun e g ->
             let kind = 
@@ -234,12 +207,12 @@ module Pipeline =
                     | HitGroup _ ->
                         ShaderBindingTableEntryType.HitGroup
                     | General index ->
-                        ShaderBindingTableEntryType.ofShaderStage p.Description.stages.[int index].shaderModule.Stage
+                        ShaderBindingTableEntryType.ofShaderStage p.Description.stages.[int index].Stage
            
             e |> ShaderBindingTableEntries.add kind Array.empty
         ) entries
 
-    let delete (p : Pipeline) =
+    let delete (p : TracePipeline) =
         if p.Handle.IsValid then
             VkRaw.vkDestroyPipeline(p.Device.Handle, p.Handle, NativePtr.zero)
             p.Handle <- VkPipeline.Null

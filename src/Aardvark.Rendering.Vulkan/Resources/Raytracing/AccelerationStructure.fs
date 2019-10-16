@@ -30,19 +30,11 @@ type AccelerationStructure =
         val mutable OpaqueHandle : uint64
 
         new(device : Device, handle : VkAccelerationStructureNV, description : AccelerationStructureDescription) =
-            let _handle =
-                temporary (fun pHandle ->
-                    VkRaw.vkGetAccelerationStructureHandleNV(device.Handle, handle,
-                                                             uint64 sizeof<uint64>, NativePtr.toNativeInt pHandle)
-                        |> check "failed to get handle of acceleration structure"
-                    NativePtr.read pHandle
-                )
-
             { inherit Resource<_>(device, handle)
               Description = description
               Memory = DevicePtr.Null
               ScratchBuffer = None 
-              OpaqueHandle = _handle }   
+              OpaqueHandle = 0UL }   
     end
 
 type BottomLevelAccelerationStructure =
@@ -165,6 +157,16 @@ module AccelerationStructure =
         s.ScratchBuffer <- Some <| Buffer.create VkBufferUsageFlags.RayTracingBitNv (int64 requirements.size) memory
         s
 
+    let private retrieveHandle (s : AccelerationStructure) =
+        s.OpaqueHandle <-
+                temporary (fun pHandle ->
+                    VkRaw.vkGetAccelerationStructureHandleNV(s.Device.Handle, s.Handle,
+                                                             uint64 sizeof<uint64>, NativePtr.toNativeInt pHandle)
+                        |> check "failed to get handle of acceleration structure"
+                    NativePtr.read pHandle
+                )
+        s
+
     let private freeMemory (s : AccelerationStructure) =
         s.Memory.Dispose()
         s.Memory <- DevicePtr.Null
@@ -180,6 +182,7 @@ module AccelerationStructure =
         s |> freeMemory
           |> allocateResultMemory (fst requirements)
           |> allocateScratchBuffer (snd requirements)
+          |> retrieveHandle
           |> ignore
 
     let private build (info : VkAccelerationStructureInfoNV) (instanceBuffer : VkBuffer) (s : AccelerationStructure) =

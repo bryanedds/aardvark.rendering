@@ -7,9 +7,11 @@ open System.Runtime.InteropServices
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Rendering.Vulkan
+open Aardvark.Rendering.Vulkan.Raytracing
 open Microsoft.FSharp.NativeInterop
 
 #nowarn "9"
+
 // #nowarn "51"
 
 
@@ -18,6 +20,7 @@ type Descriptor =
     | StorageBuffer of int * Buffer * offset : int64 * size : int64
     | CombinedImageSampler of int * array<Option<VkImageLayout * ImageView * Sampler>>
     | StorageImage of int * ImageView
+    | AccelerationStructure of int * TopLevelAccelerationStructure
 
 type DescriptorSet =
     class
@@ -31,6 +34,7 @@ type DescriptorSet =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module DescriptorSet =
+    open NVRayTracing
 
     let tryAlloc (layout : DescriptorSetLayout) (pool : DescriptorPool) =
         lock pool (fun () ->
@@ -86,6 +90,8 @@ module DescriptorSet =
         let cnt = descriptors |> Array.sumBy (function CombinedImageSampler(_, arr) -> arr.Length | _ -> 1)
         let mutable bufferInfos = NativePtr.stackalloc cnt
         let mutable imageInfos = NativePtr.stackalloc cnt
+        let mutable accelerationStructureHandles = NativePtr.stackalloc cnt
+        let mutable accelerationStructureWrites = NativePtr.stackalloc cnt
 
         let writes =
             descriptors
@@ -188,6 +194,33 @@ module DescriptorSet =
                                     uint32 binding,
                                     0u, 1u, VkDescriptorType.StorageImage,
                                     ptr,
+                                    NativePtr.zero,
+                                    NativePtr.zero
+                                )
+
+                            [| write |]
+
+                        | AccelerationStructure(binding, accelerationStructure) ->
+                            NativePtr.write accelerationStructureHandles accelerationStructure.Handle 
+                            let pHandle = accelerationStructureHandles
+                            accelerationStructureHandles <- NativePtr.step 1 accelerationStructureHandles
+
+                            let writeAccelerationStructure =
+                                VkWriteDescriptorSetAccelerationStructureNV(
+                                    VkStructureType.WriteDescriptorSetAccelerationStructureNv, 0n, 1u, pHandle
+                                )
+                            
+                            NativePtr.write accelerationStructureWrites writeAccelerationStructure
+                            let ptr = accelerationStructureWrites
+                            accelerationStructureWrites <- NativePtr.step 1 accelerationStructureWrites
+
+                            let write = 
+                                VkWriteDescriptorSet(
+                                    VkStructureType.WriteDescriptorSet, NativePtr.toNativeInt ptr,
+                                    set.Handle,
+                                    uint32 binding,
+                                    0u, 1u, VkDescriptorType.AccelerationStructureNv,
+                                    NativePtr.zero,
                                     NativePtr.zero,
                                     NativePtr.zero
                                 )

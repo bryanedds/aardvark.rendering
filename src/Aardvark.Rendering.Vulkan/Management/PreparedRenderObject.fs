@@ -161,8 +161,9 @@ type DevicePreparedRenderObjectExtensions private() =
                                         failf "could not find texture: %A" textureName
 
                                 AdaptiveDescriptor.AdaptiveStorageImage(i, viewSam) |> Some
-                                
-                                
+
+                            | AccelerationStructureParameter _ ->
+                                None             
                     )
 
                 let res = this.CreateDescriptorSet(ds, Array.toList descriptors)
@@ -343,6 +344,8 @@ type DevicePreparedRenderObjectExtensions private() =
 
                                 AdaptiveDescriptor.AdaptiveStorageImage(i, viewSam) |> Some
                                 
+                            | AccelerationStructureParameter _ ->
+                                None
                     )
 
                 let res = this.CreateDescriptorSet(ds, Array.toList descriptors)

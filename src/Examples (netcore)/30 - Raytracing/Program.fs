@@ -10,7 +10,7 @@ open System
 open System.IO
 
 
-let quad (color : C4b) =
+let quad =
     let quad =
         let index = [|0;1;2; 0;2;3|]
         let positions = [|V3f(-1,-1,0); V3f(1,-1,0); V3f(1,1,0); V3f(-1,1,0) |]
@@ -35,10 +35,12 @@ let main argv =
     let runtime = app.Runtime :> IRuntime
     let device = app.Runtime.Device
 
-    let raygenShader = File.ReadAllBytes "dummy.spv"
+    let raygenShader = File.ReadAllBytes "primary.rgen.spv"
+    let missShader = File.ReadAllBytes "primary.rmiss.spv"
+    let chitShader = File.ReadAllBytes "primary.rchit.spv"
 
     let vb : MyBuffer =
-        let b = runtime.CreateBuffer([| V3f(-0.5, -0.5, 0.0); V3f(0.5, -0.5, 0.0); V3f(0.0, 0.5, 0.0) |])
+        let b = runtime.CreateBuffer([| V3f(-0.5, -0.5, 1.0); V3f(0.5, -0.5, 1.0); V3f(0.0, 0.5, 1.0) |])
         {
             buffer = b.Buffer
             count = b.Count
@@ -60,8 +62,8 @@ let main argv =
         runtime.CreateAccelerationStructure([TraceGeometry.Triangles (vb, Some ib)])
 
     let obj : TraceObject = {
-        transform = M34d.Identity
-        closestHitShader = Unchecked.defaultof<_>
+        transform = Trafo3d.Identity
+        closestHitShader = Some chitShader
         anyHitShader = None
         intersectionShader = None
         geometry = accelerationStructure
@@ -69,11 +71,12 @@ let main argv =
     }
 
     let resultImage : IBackendTexture =
-        runtime.CreateTexture(V2i(100, 100), TextureFormat.Rgba8, 1, 1)
+        runtime.CreateTexture(V2i(1024, 1024), TextureFormat.Rgba8, 1, 1)
 
     let scene : TraceScene = {
         raygenShader = raygenShader
-        missShaders = []
+        missShaders = [missShader]
+        callableShaders = []
         objects = [obj]
         globals = SymDict.empty
         buffers = SymDict.empty
@@ -85,11 +88,10 @@ let main argv =
     task.Dispose()
 
     let sg =
-        quad C4b.White
-            |> Sg.texture DefaultSemantic.DiffuseColorTexture ~~(resultImage :> ITexture)
-            |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
+        quad |> Sg.texture DefaultSemantic.DiffuseColorTexture ~~(resultImage :> ITexture)
+             |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
 
-    window.RenderTask <- runtime.CompileRender(window.FramebufferSignature, sg)    
+    window.RenderTask <- runtime.CompileRender(window.FramebufferSignature, sg)
     window.Run()
 
     runtime.DeleteTexture resultImage

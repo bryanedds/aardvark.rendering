@@ -39,35 +39,57 @@ type RayHitInterface =
 [<AutoOpen>]
 module DummyHelpers =
     open FShade.GLSL
+    open FShade.Formats
+    open Microsoft.FSharp.Reflection
+    open FShade.Imperative
+
+    let backend = Backends.glslVulkan
 
     let raygenInfo : RayHitInfo =
         {
-            neededUniforms = Map.ofList ["resultImage", typeof<VkImage>]
+            neededUniforms = Map.ofList ["resultImage", typeof<IntImage2d<rgba8i>>]
             neededSamplers = Map.empty
             neededBuffers = Map.empty
             payloadInType = typeof<unit>
             payloadOutType = typeof<unit>
         }
 
-    let resultImage : GLSLImage =
-        let imageType : GLSLImageType =
-            {
-                original = Unchecked.defaultof<_>
-                format = None
-                dimension = SamplerDimension.Sampler2d
-                isArray = false
-                isMS = false
-                valueType = GLSLType.Vec(4, GLSLType.Int (false, 8))
-            }
+    let assign (info : RayHitInfo) =
+
+        let mapi f =
+            (Map.toList >> List.mapi f >> Map.ofList)
+
+        let getFields t =
+            if FSharpType.IsRecord t then
+                FSharpType.GetRecordFields t
+                    |> Array.toList
+                    |> List.map (fun p -> p.Name, p.Type)
+            else
+                []
+
+        let uniformBuffers =
+            info.neededUniforms 
+                |> mapi (fun i (name, uniform) -> ((0, i), (name, getFields uniform)))
+
+        let samplers =
+            let offset = uniformBuffers.Count
+            info.neededSamplers
+                |> mapi (fun i (name, sampler) -> ((0, offset + i), (name, sampler)))
+
+        let buffers =
+            let offset = uniformBuffers.Count + samplers.Count
+            info.neededBuffers
+                |> mapi (fun i (name, (dim, buffer)) -> ((0, offset + i), (name, dim, buffer)))
 
         {
-            imageSet = 0
-            imageBinding = 0
-            imageName = "resultImage"
-            imageType = imageType
+            uniformBuffers = uniformBuffers
+            samplers = samplers
+            buffers = buffers
+            payloadInLocation = 0
+            payloadOutLocation = 0
         }
 
-    let dummyShaderModule (device : Device) (code : byte[]) =
+    let dummyShaderModule (device : Device) (stage : Aardvark.Base.ShaderStage) (code : byte[]) =
         let handle =
             native {
                 let! pCode = code
@@ -84,14 +106,50 @@ module DummyHelpers =
                 return !!pHandle
             }
 
-        new ShaderModule(device, handle, ShaderStage.Raygen, Map.empty, code)
+        new ShaderModule(device, handle, stage, Map.empty, code)
 
-    let dummyDescriptorSetLayout (device : Device) =
-        let binding =
-            DescriptorSetLayoutBinding.create VkDescriptorType.StorageImage VkShaderStageFlags.RaygenBitNv
-                (ShaderUniformParameter.ImageParameter resultImage) device
+    let dummyDescriptorSetLayout (device : Device) (info : RayHitInfo) (iface : RayHitInterface) =
+        let bindings =
+            iface.uniformBuffers
+                |> Map.map (fun (set, binding) (name, _) ->
+                    match info.neededUniforms.[name] with
+                        | ImageType (format, dim, isArray, isMS, valueType) as uniform -> 
+                            let imageType : GLSLImageType =
+                                {
+                                    original = uniform
+                                    format = ImageFormat.ofFormatType format
+                                    dimension = dim
+                                    isArray = isArray
+                                    isMS = isMS
+                                    valueType = GLSLType.ofCType backend.Config.reverseMatrixLogic (CType.ofType backend valueType)
+                                }
+                        
+                            VkDescriptorType.StorageImage,
+                            ShaderUniformParameter.ImageParameter
+                                {
+                                    imageSet = set
+                                    imageBinding = binding
+                                    imageName = name
+                                    imageType = imageType
+                                }
+                        | _ ->
+                            failwith "no"
+ 
+                ) |> Map.values
+                  |> Seq.map (fun (t, p) ->
+                        DescriptorSetLayoutBinding.create t VkShaderStageFlags.RaygenBitNv p device
+                  ) |> Seq.toArray
 
-        DescriptorSetLayout.create [|binding|] device
+        let bindings =
+            Array.append bindings [|
+                DescriptorSetLayoutBinding.create
+                    VkDescriptorType.AccelerationStructureNv
+                    VkShaderStageFlags.RaygenBitNv
+                    (AccelerationStructureParameter ("scene", 0, 1))
+                    device
+            |]
+
+        DescriptorSetLayout.create bindings device
 
     let dummyDescriporSet (device : Device) (layout : DescriptorSetLayout) =
         device.CreateDescriptorSet layout
@@ -177,42 +235,67 @@ module ``Trace Command Extensions`` =
                         Disposable.Empty
                 }
 
+[<AutoOpen>]
+module private ShaderGroups =
+
+    type ShaderGroup<'a> =
+        | Raygen of 'a
+        | Miss of 'a
+        | Callable of 'a
+        | HitGroup of anyHit : Option<'a> * closestHit : Option<'a> * intersection : Option<'a>
+
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module ShaderGroup =
+        
+        let compile (device : Device) (group : ShaderGroup<byte[]>) =
+            match group with
+                | Raygen x -> Raygen (dummyShaderModule device ShaderStage.Raygen x)
+                | Miss x -> Miss (dummyShaderModule device ShaderStage.Miss x)
+                | Callable x -> Callable (dummyShaderModule device ShaderStage.Callable x)
+                | HitGroup (x, y, z) -> HitGroup (
+                                            x |> Option.map (dummyShaderModule device ShaderStage.AnyHit),
+                                            y |> Option.map (dummyShaderModule device ShaderStage.ClosestHit),
+                                            z |> Option.map (dummyShaderModule device ShaderStage.Intersection)
+                                        )
+
+        let addToPipelineDescription (group : ShaderGroup<ShaderModule>) (desc : TracePipelineDescription) =
+            match group with
+                | Raygen x
+                | Miss x
+                | Callable x ->
+                    desc |> TracePipelineDescription.addShaderStage x
+                | HitGroup (anyHit, closestHit, intersection) ->
+                    desc |> TracePipelineDescription.addHitShaderStage anyHit closestHit intersection
+
+        let iter (f : 'a -> unit) = function
+            | Raygen x
+            | Miss x
+            | Callable x ->
+                f x
+            | HitGroup (x, y, z) ->
+                [x; y; z] |> List.iter (Option.iter f)
+
+        let delete (device : Device) = 
+            iter (fun g -> ShaderModule.delete g device)
+
 type TraceTask(device : Device, scene : TraceScene) =
 
-    let raygenShaderModule = dummyShaderModule device scene.raygenShader
+    let shaderGroups = 
+        [
+            scene.raygenShader |> (Raygen >> List.singleton)
+            scene.missShaders |> List.map Miss
+            scene.callableShaders |> List.map Callable
+            scene.objects |> List.map (fun o -> HitGroup (o.anyHitShader, o.closestHitShader, o.intersectionShader))
+        ] 
+        |> List.concat
+        |> List.distinct
 
-    // Descriptor sets
-    let descriptorSetLayout = dummyDescriptorSetLayout device
-    let descriptorSet = device.CreateDescriptorSet descriptorSetLayout
-    
-    let foo = 
-        for binding in descriptorSetLayout.Bindings do
-            match binding.Parameter with
-                | ImageParameter img -> 
-                    let texture = scene.textures.[Symbol.Create img.imageName]
-                    let image = device.CreateImage(texture)
-                    let view = device.CreateOutputImageView(image)
-
-                    descriptorSet.Update([|StorageImage (img.imageBinding, view)|])
-
-                    device.Delete(view)
-                    device.Delete(image)
-
-                | _ -> failwith "blub"
-
-    // Pipeline
-    let pipelineLayout = dummyPipelineLayout device descriptorSetLayout.Handle
-
-    let pipelineDescription =
-            PipelineDescription.create pipelineLayout 0u
-                |> PipelineDescription.addShaderStage raygenShaderModule
-
-    let pipeline = Pipeline.create device pipelineDescription
+    let shaderModules = shaderGroups |> List.map (ShaderGroup.compile device)
 
     // Top-level acceleration structure
     let instances = scene.objects |> List.mapi (fun i o ->
         let mutable inst = VkGeometryInstance()
-        inst.transform <- M34f.op_Explicit o.transform
+        inst.transform <- M34f(o.transform.Forward.Transposed.Elements |> Seq.map float32 |> Seq.toArray)
         inst.instanceId <- uint24(uint32 i)
         inst.mask <- 0xffuy
         inst.instanceOffset <- uint24 0u
@@ -227,8 +310,39 @@ type TraceTask(device : Device, scene : TraceScene) =
         instanceCount = uint32 instances.Length
     }
 
+    // Descriptor sets
+    let descriptorSetLayout = dummyDescriptorSetLayout device raygenInfo (assign raygenInfo)
+    let descriptorSet = device.CreateDescriptorSet descriptorSetLayout
+    
+    do for binding in descriptorSetLayout.Bindings do
+        match binding.Parameter with
+            | ImageParameter img -> 
+                let texture = scene.textures.[Symbol.Create img.imageName]
+                let image = device.CreateImage(texture)
+                let view = device.CreateOutputImageView(image)
+
+                descriptorSet.Update([|StorageImage (img.imageBinding, view)|])
+
+                device.Delete(view)
+                device.Delete(image)
+
+            | AccelerationStructureParameter (_, _, binding) ->
+                descriptorSet.Update([|Descriptor.AccelerationStructure (binding, tlAS)|])
+
+            | _ -> failwith "blub"
+
+    // Pipeline
+    let pipelineLayout = dummyPipelineLayout device descriptorSetLayout.Handle
+
+    let pipelineDescription =
+        shaderModules |> List.fold (fun desc shader ->
+            desc |> ShaderGroup.addToPipelineDescription shader
+        ) (TracePipelineDescription.create pipelineLayout 0u)
+
+    let pipeline = TracePipeline.create device pipelineDescription
+
     // Shader binding table
-    let sbtEntries = Pipeline.getShaderBindingTableEntries pipeline
+    let sbtEntries = TracePipeline.getShaderBindingTableEntries pipeline
     let sbt = ShaderBindingTable.create device pipeline.Handle sbtEntries
 
     interface ITraceTask with
@@ -248,9 +362,9 @@ type TraceTask(device : Device, scene : TraceScene) =
             ShaderBindingTable.delete sbt
             AccelerationStructure.delete tlAS
             InstanceBuffer.delete tlAS.Description.instanceBuffer
-            Pipeline.delete pipeline
+            TracePipeline.delete pipeline
             PipelineLayout.delete pipelineLayout device
             DescriptorSetLayout.delete descriptorSetLayout device
-            ShaderModule.delete raygenShaderModule device
+            shaderModules |> List.iter (ShaderGroup.delete device)
             
 

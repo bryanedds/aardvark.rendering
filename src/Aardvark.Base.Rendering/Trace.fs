@@ -27,10 +27,10 @@ type IAccelerationStructureRuntime =
 
 
 type TraceObject = {
-    transform           : M34d                      // TODO: Adaptive
-    closestHitShader    : obj
-    anyHitShader        : option<obj>
-    intersectionShader  : option<obj>
+    transform           : Trafo3d                      // TODO: Adaptive
+    closestHitShader    : option<byte[]>
+    anyHitShader        : option<byte[]>
+    intersectionShader  : option<byte[]>
     geometry            : IAccelerationStructure
     userData            : SymbolDict<obj>           // TODO: Adaptive
 }
@@ -38,6 +38,7 @@ type TraceObject = {
 type TraceScene = {
     raygenShader    : byte[]
     missShaders     : list<byte[]>
+    callableShaders : list<byte[]>
     objects         : list<TraceObject>
     globals         : SymbolDict<IMod>              
     buffers         : SymbolDict<IBackendBuffer>    // TODO: Adaptive
