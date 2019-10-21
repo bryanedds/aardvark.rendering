@@ -4,14 +4,10 @@ open Aardvark.Base
 open Aardvark.Rendering.Vulkan
 open Aardvark.Rendering.Vulkan.NVRayTracing
 
-type ShaderGroupCreateInfo =
-    | General of generalShader : uint32
-    | HitGroup of anyHitShader : option<uint32> * closestHitShader : option<uint32> * intersectionShader : option<uint32>
-
 type TracePipelineDescription = {
     layout : PipelineLayout
     stages : ShaderModule[]
-    groups : ShaderGroupCreateInfo[]
+    groups : ShaderGroup<uint32>[]
     maxRecursionDepth : uint32
 }
 
@@ -29,14 +25,10 @@ module ShaderGroupCreateInfo =
 
     let private VkShaderUnused = ~~~0u
 
-    let createGeneral (generalShader : uint32) =
-        General generalShader
-
-    let createHitGroup (anyHitShader : option<uint32>) (closestHitShader : option<uint32>) (intersectionShader : option<uint32>) =
-        HitGroup (anyHitShader, closestHitShader, intersectionShader)
-
     let getType = function
-        | General _ ->
+        | Raygen _ 
+        | Miss _
+        | Callable _ ->
             VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeGeneralNv
         | HitGroup (_, _, None) ->
             VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeTrianglesHitGroupNv
@@ -44,7 +36,9 @@ module ShaderGroupCreateInfo =
             VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeProceduralHitGroupNv
 
     let getGeneralShader = function
-        | General g -> g
+        | Raygen g 
+        | Miss g
+        | Callable g -> g
         | _ -> VkShaderUnused
 
     let getAnyHitShader = function
@@ -76,80 +70,25 @@ module TracePipelineDescription =
 
     let addShaderStage (shader : ShaderModule) (desc : TracePipelineDescription) =
         let stages = Array.append desc.stages [|shader|]
-        let index = uint32 <| stages.Length - 1
 
         let valid =
             match shader.Stage with
                 | ShaderStage.Raygen
                 | ShaderStage.Miss
-                | ShaderStage.Callable -> true
+                | ShaderStage.Callable
+                | ShaderStage.AnyHit
+                | ShaderStage.ClosestHit 
+                | ShaderStage.Intersection -> true
                 | _ -> false
 
         if not valid then
-            Log.error "[Vulkan] %s" "General shader stage not valid"
-            failwithf "[Vulkan] %s" "General shader stage not valid"
-
-        let g = ShaderGroupCreateInfo.createGeneral index
+            Log.error "[Vulkan] %s" "Shader stage not valid"
+            failwithf "[Vulkan] %s" "Shader stage not valid"
         
-        { desc with stages = stages
-                    groups = Array.append desc.groups [|g|] }
+        { desc with stages = stages }
 
-    let addHitShaderStage (anyHit : ShaderModule option)
-                          (closestHit : ShaderModule option)
-                          (intersection : ShaderModule option) 
-                          (desc : TracePipelineDescription) =
-
-        let addToStages (shader : ShaderModule) (desc : TracePipelineDescription) =
-            { desc with stages = Array.append desc.stages [|shader|] }
-
-        let addToGroup (index : uint32) (stage : ShaderStage) (desc : TracePipelineDescription) =
-            let anyHit, closestHit, intersection =
-                match Array.last desc.groups with
-                    | General _ -> failwith "cannot add hit group shader to general shader group"
-                    | HitGroup (x, y, z) -> x, y, z
-
-            let group =
-                match stage with
-                    | ShaderStage.AnyHit ->
-                        HitGroup (Some index, closestHit, intersection)
-                    | ShaderStage.ClosestHit ->
-                        HitGroup (anyHit, Some index, intersection)
-                    | ShaderStage.Intersection ->
-                        HitGroup (closestHit, anyHit, Some index)
-                    | _ ->
-                        failwithf "cannot add shader of type %A to hit group" stage
-
-            desc.groups.[desc.groups.Length - 1] <- group
-            desc
-
-        let flags = List.toArray [ 
-            ShaderStage.AnyHit
-            ShaderStage.ClosestHit
-            ShaderStage.Intersection
-        ]
-
-        let input = [anyHit; closestHit; intersection]
-
-        let valid =
-            input
-                |> List.mapi (fun i x ->
-                    x |> Option.map (fun x -> x.Stage = flags.[i])
-                      |> Option.defaultValue true
-                ) |> List.forall id
-
-        if not valid then
-            Log.error "[Vulkan] %s" "Hit shader stage not valid"
-            failwithf "[Vulkan] %s" "Hit shader stage not valid"
-
-        let g = ShaderGroupCreateInfo.createHitGroup None None None
-
-        input |> List.fold (fun d s -> 
-            match s with
-                | None -> d
-                | Some s -> 
-                    let index = uint32 d.stages.Length
-                    d |> addToStages s |> addToGroup index s.Stage
-        ) { desc with groups = Array.append desc.groups [|g|] }
+    let addShaderGroup (group : ShaderGroup<uint32>) (desc : TracePipelineDescription) =
+        { desc with groups = Array.append desc.groups [|group|] }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TracePipeline =
@@ -206,8 +145,12 @@ module TracePipeline =
                 match g with
                     | HitGroup _ ->
                         ShaderBindingTableEntryType.HitGroup
-                    | General index ->
-                        ShaderBindingTableEntryType.ofShaderStage p.Description.stages.[int index].Stage
+                    | Raygen _ ->
+                        ShaderBindingTableEntryType.Raygen
+                    | Miss _ ->
+                        ShaderBindingTableEntryType.Miss
+                    | Callable _ ->
+                        ShaderBindingTableEntryType.Callable
            
             e |> ShaderBindingTableEntries.add kind Array.empty
         ) entries

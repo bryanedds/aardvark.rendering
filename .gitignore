@@ -43,6 +43,7 @@ src/GLVM/*.dylib
 /lib/Native/Aardvark.Rendering.Vulkan/windows/x86/*.ilk
 /src/vkvm/.vs/VKVM/v14/*.suo
 /src/vkvm/*.so
+**/.ionide
 .ionide.debug
 /src/Demo/Scratch/InteractionModels.g.fs
 /.paket/Paket.Restore.targets

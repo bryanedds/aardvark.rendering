@@ -65,8 +65,8 @@ type TopLevelAccelerationStructure =
 module private AccelerationStructureHelpers =
     open System.Runtime.InteropServices
 
-    let getBufferHandle (buffer : MyBuffer) =
-        match buffer.buffer with
+    let getBufferHandle (buffer : IBuffer) =
+        match buffer with
             | :? Buffer as b -> b.Handle
             | _ -> VkBuffer.Null
 
@@ -241,12 +241,12 @@ module AccelerationStructure =
                 match ib with
                     | None ->
                         VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
-                            getBufferHandle vb, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
+                            getBufferHandle vb.buffer, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
                             VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, VkBuffer.Null, 0UL)
                     | Some ib ->
                         VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
-                            getBufferHandle vb, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
-                            getBufferHandle ib, uint64 ib.offset, uint32 ib.count, getIndexType ib.format,
+                            getBufferHandle vb.buffer, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
+                            getBufferHandle ib.buffer, uint64 ib.offset, uint32 ib.count, getIndexType ib.format,
                             VkBuffer.Null, 0UL)
 
             VkGeometryNV(
@@ -258,7 +258,7 @@ module AccelerationStructure =
                 VkGeometryFlagsNV.VkGeometryOpaqueBitNv
             )
  
-        let createAABB (buffer : MyBuffer) =
+        let createAABB (buffer : IBuffer<'a>) =
             VkGeometryNV(
                 VkStructureType.GeometryNv, 0n, 
                 VkGeometryTypeNV.VkGeometryTypeAabbsNv,
@@ -268,7 +268,7 @@ module AccelerationStructure =
                         VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, 
                         VkBuffer.Null, 0UL),
                     VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n,
-                        getBufferHandle buffer, uint32 buffer.count, 24u, uint64 buffer.offset)
+                        getBufferHandle buffer.Buffer, uint32 buffer.Count, uint32 sizeof<'a>, uint64 buffer.Offset)
                 ),
                 VkGeometryFlagsNV.VkGeometryOpaqueBitNv
             )

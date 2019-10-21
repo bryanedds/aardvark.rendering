@@ -1,0 +1,23 @@
+#version 460
+#extension GL_NV_ray_tracing : require
+
+hitAttributeNV vec2 hitAttribs;
+
+void main() {
+    float radius = 1.0;
+
+    vec3 origin = gl_ObjectRayOriginNV;
+    vec3 direction = gl_ObjectRayDirectionNV;
+
+    float a = dot(direction, direction);
+    float b = 2.0 * dot(origin, direction);
+    float c = dot(origin, origin) - radius * radius;
+    float discriminant = b * b - 4 * a * c;
+
+    if(discriminant >= 0) {
+        float t = (-b - sqrt(discriminant)) / (2.0 * a);
+
+        hitAttribs.x = (t - gl_RayTminNV) /  gl_RayTmaxNV;
+        reportIntersectionNV(t, 0);
+    }
+}

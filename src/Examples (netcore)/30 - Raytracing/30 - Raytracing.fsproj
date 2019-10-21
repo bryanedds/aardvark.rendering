@@ -13,6 +13,8 @@
     <OutputPath>..\..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="sphere.rint" />
+    <None Include="white.rchit" />
     <None Include="primary.rchit" />
     <None Include="primary.rgen" />
     <None Include="primary.rmiss" />
@@ -36,6 +38,6 @@
   <Import Project="..\..\..\packages\NETStandard.Library\build\$(__paket__NETStandard_Library_targets).targets" Condition="Exists('..\..\..\packages\NETStandard.Library\build\$(__paket__NETStandard_Library_targets).targets')" Label="Paket" />
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="glslc &quot;$(ProjectDir)primary.rgen&quot; -o primary.rgen.spv&#xD;&#xA;copy primary.rgen.spv &quot;$(OutDir)&quot;&#xD;&#xA;glslc &quot;$(ProjectDir)primary.rmiss&quot; -o primary.rmiss.spv&#xD;&#xA;copy primary.rmiss.spv &quot;$(OutDir)&quot;&#xD;&#xA;glslc &quot;$(ProjectDir)primary.rchit&quot; -o primary.rchit.spv&#xD;&#xA;copy primary.rchit.spv &quot;$(OutDir)&quot;" />
+    <Exec Command="glslc &quot;$(ProjectDir)primary.rgen&quot; -o primary.rgen.spv&#xD;&#xA;copy primary.rgen.spv &quot;$(OutDir)&quot;&#xD;&#xA;glslc &quot;$(ProjectDir)primary.rmiss&quot; -o primary.rmiss.spv&#xD;&#xA;copy primary.rmiss.spv &quot;$(OutDir)&quot;&#xD;&#xA;glslc &quot;$(ProjectDir)primary.rchit&quot; -o primary.rchit.spv&#xD;&#xA;copy primary.rchit.spv &quot;$(OutDir)&quot;&#xD;&#xA;glslc &quot;$(ProjectDir)white.rchit&quot; -o white.rchit.spv&#xD;&#xA;copy white.rchit.spv &quot;$(OutDir)&quot;&#xD;&#xA;glslc &quot;$(ProjectDir)sphere.rint&quot; -o sphere.rint.spv&#xD;&#xA;copy sphere.rint.spv &quot;$(OutDir)&quot;" />
   </Target>
 </Project>

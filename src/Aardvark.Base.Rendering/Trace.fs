@@ -13,7 +13,7 @@ type MyBuffer = {
 
 type TraceGeometry =
     | Triangles of vertexBuffer: MyBuffer * indexBuffer : option<MyBuffer>
-    | AABBs of buffer : MyBuffer
+    | AABBs of buffer : IBuffer<Box3f>
 
 type IAccelerationStructure =
     abstract member Handle : obj

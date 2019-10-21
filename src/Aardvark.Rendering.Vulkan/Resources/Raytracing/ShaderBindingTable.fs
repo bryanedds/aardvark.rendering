@@ -14,10 +14,23 @@ type ShaderBindingTableEntryType =
 
 type ShaderBindingTableEntry = {
     kind : ShaderBindingTableEntryType
+
+    // The index of the entry in the pGroups array in                                                                           
+    // the VkRayTracingShaderGroupCreateInfoNV struct
+    groupIndex : int
+
+    // User data available as a buffer with the shaderRecordNV qualifier
+    // in the shaders
     inlineData : uint8[]
 }
 
-type ShaderBindingTableEntries = Dict<ShaderBindingTableEntryType, ShaderBindingTableEntry[]>
+type ShaderBindingTableEntries =
+    {
+        sections : Dict<ShaderBindingTableEntryType, ShaderBindingTableEntry list>
+    }
+
+    member x.Values = x.sections.Values |> Seq.map List.rev
+    member x.Count = x.sections.Values |> Seq.sumBy List.length
 
 type ShaderBindingTable =
     class
@@ -68,20 +81,25 @@ module ShaderBindingTableEntryType =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module ShaderBindingTableEntries =
     open System
-    open Microsoft.FSharp.Reflection
+
+    let count (entries : ShaderBindingTableEntries) =
+        entries.Count
+
+    let values (entries : ShaderBindingTableEntries) =
+        entries.Values
 
     let empty : ShaderBindingTableEntries =
         let d = Dict.empty
 
         for c in Enum.GetValues typeof<ShaderBindingTableEntryType> do
             let t = unbox<ShaderBindingTableEntryType> c
-            d.[t] <- [||]
+            d.[t] <- []
 
-        d
+        { sections = d }
 
     let add (kind : ShaderBindingTableEntryType) (data : uint8[]) (entries : ShaderBindingTableEntries) =
-        let e = { kind = kind; inlineData = data }
-        entries.[kind] <- entries.[kind] |> Array.append [|e|]
+        let e = { kind = kind; groupIndex = entries.Count; inlineData = data }
+        entries.sections.[kind] <- e::entries.sections.[kind]
         entries
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -112,28 +130,28 @@ module ShaderBindingTable =
 
     // Returns the size of an entry (consists of a program id + inline data)
     // Every entry of a given type must be the same size and aligned to 16 bytes
-    let private getEntrySize (handleSize : uint32) (entries : ShaderBindingTableEntry[]) =
+    let private getEntrySize (handleSize : uint32) (entries : ShaderBindingTableEntry list) =
         let roundUp alignment x =
             (x + alignment - 1u) &&& ~~~(alignment - 1u)
 
         let maxDefault x =
-            if Array.isEmpty x then 0u else Array.max x 
+            if List.isEmpty x then 0u else List.max x 
         
         let maxSize =
-            entries |> Array.map (fun e -> uint32 e.inlineData.Length)
+            entries |> List.map (fun e -> uint32 e.inlineData.Length)
                     |> maxDefault
             
         (handleSize + maxSize) |> roundUp 16u
 
     // Returns the total size of the table
     let private getTotalSize (handleSize : uint32) (entries : ShaderBindingTableEntries) =
-        entries.Values |> Seq.sumBy (fun e -> 
+        entries.sections.Values |> Seq.sumBy (fun e -> 
             (uint32 e.Length) * getEntrySize handleSize e
         )
     
     // Returns the base offset for the given entry type
     let private getOffset (kind : ShaderBindingTableEntryType) (handleSize : uint32) (entries : ShaderBindingTableEntries) =
-        entries.KeyValuePairs 
+        entries.sections.KeyValuePairs 
             |> Seq.takeWhile (fun x -> x.Key <> kind)
             |> Seq.sumBy (fun x -> 
                 uint64 (getEntrySize handleSize x.Value * uint32 x.Value.Length)
@@ -142,17 +160,17 @@ module ShaderBindingTable =
     let private getOffsetsAndStrides (handleSize : uint32) (entries : ShaderBindingTableEntries) =
         getOffset ShaderBindingTableEntryType.Raygen handleSize entries,
         getOffset ShaderBindingTableEntryType.Miss handleSize entries,
-        uint64 (getEntrySize handleSize entries.[ShaderBindingTableEntryType.Miss]),
+        uint64 (getEntrySize handleSize entries.sections.[ShaderBindingTableEntryType.Miss]),
         getOffset ShaderBindingTableEntryType.HitGroup handleSize entries,
-        uint64 (getEntrySize handleSize entries.[ShaderBindingTableEntryType.HitGroup]),
+        uint64 (getEntrySize handleSize entries.sections.[ShaderBindingTableEntryType.HitGroup]),
         getOffset ShaderBindingTableEntryType.Callable handleSize entries,
-        uint64 (getEntrySize handleSize entries.[ShaderBindingTableEntryType.Callable])
+        uint64 (getEntrySize handleSize entries.sections.[ShaderBindingTableEntryType.Callable])
        
     let tryUpdate (pipeline : VkPipeline) (entries : ShaderBindingTableEntries) (table : ShaderBindingTable) =
         let totalSize = getTotalSize table.ShaderGroupHandleSize entries
 
         if table.Size = int64 totalSize then
-            let groupCount = entries.Values |> Seq.sumBy Array.length
+            let groupCount = entries.Count
             let shaderHandles : uint8[] = Array.zeroCreate <| groupCount * (int table.ShaderGroupHandleSize)
 
             pinned shaderHandles (fun ptr ->
@@ -165,17 +183,15 @@ module ShaderBindingTable =
 
             pinned output (fun ptr ->
                 let mutable pOutput : nativeptr<uint8> = NativePtr.ofNativeInt ptr
-                let mutable index = 0
                 let handleSize = int table.ShaderGroupHandleSize
             
                 entries.Values |> Seq.iter (fun x ->
                     let entrySize = int <| getEntrySize table.ShaderGroupHandleSize x
 
                     x |> Seq.iter (fun e ->
-                        Marshal.Copy(shaderHandles, index * handleSize, NativePtr.toNativeInt pOutput, handleSize)
+                        Marshal.Copy(shaderHandles, e.groupIndex * handleSize, NativePtr.toNativeInt pOutput, handleSize)
                         Marshal.Copy(e.inlineData, 0, NativePtr.toNativeInt (pOutput &+ handleSize), e.inlineData.Length)
                         pOutput <- pOutput &+ entrySize
-                        inc &index
                     )
                 )
 
