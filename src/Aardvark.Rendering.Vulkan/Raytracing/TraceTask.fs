@@ -4,6 +4,8 @@ open System
 open Aardvark.Base
 open Aardvark.Rendering.Vulkan.Raytracing
 open Aardvark.Rendering.Vulkan.NVRayTracing
+open System.Runtime.InteropServices
+open Aardvark.Base.Rendering
 
 type SamplerInfo =
     {
@@ -28,58 +30,111 @@ type RayHitInfo =
 
 type RayHitInterface =
     {
-        uniformBuffers      : Map<int * int, string * list<string * Type>>
+        uniformBuffers      : Map<int * int, string * list<string * FShade.GLSL.GLSLType>>
         samplers            : Map<int * int, string * SamplerInfo>
         buffers             : Map<int * int, string * int * Type>
         payloadInLocation   : int
         payloadOutLocation  : int
     }
 
+[<Struct; StructLayout(LayoutKind.Sequential)>]
+type CameraUniform =
+    struct
+        new(v, p) = {viewInverse = v; projInverse = p}
+
+        val viewInverse : M44f
+        val projInverse : M44f
+    end
+
+[<Struct; StructLayout(LayoutKind.Sequential)>]
+type RaytracingSettings =
+    struct
+        new(bounces, min, max) = {maxBounces = bounces; tmin = min; tmax = max}
+
+        val maxBounces : uint32
+        val tmin : float32
+        val tmax : float32
+    end
+
 [<AutoOpen>]
 module DummyHelpers =
     open FShade
     open FShade.GLSL
     open FShade.Formats
-    open Microsoft.FSharp.Reflection
     open FShade.Imperative
 
     let backend = Backends.glslVulkan
 
     let raygenInfo : RayHitInfo =
         {
-            neededUniforms = Map.ofList ["resultImage", typeof<IntImage2d<rgba8i>>]
+            neededUniforms = Map.ofList [
+                "resultImage", typeof<IntImage2d<rgba8i>>
+                "camera", typeof<CameraUniform>
+                "raytracingSettings", typeof<RaytracingSettings>
+                "scene", typeof<VkAccelerationStructureNV>
+            ]
             neededSamplers = Map.empty
             neededBuffers = Map.empty
             payloadInType = typeof<unit>
             payloadOutType = typeof<unit>
         }
 
+    let fixedBindings = LookupTable.lookupTable [
+        "resultImage", 0
+        "camera", 1
+        "raytracingSettings", 2
+        "scene", 3
+    ]
+
+    let getType t =
+        let t = GLSLType.ofCType backend.Config.reverseMatrixLogic (CType.ofType backend t)
+        let (final, _, _) = t |> LayoutStd140.layout
+        final
+        
+    let getFields t =
+        match (getType t) with
+            | Struct(_, fields, _) -> fields |> List.map (fun (name, typ, _) -> name, typ)
+            | _ -> []
+
+    let getUniformBuffer set binding name typ =
+        let t = getType typ
+
+        let toUniformBufferField (name, typ, offset) = {
+            ufName = name
+            ufType = typ
+            ufOffset = offset
+        }
+
+        match t with
+            | Struct(_, fields, size) ->
+                {
+                    ubSet = set
+                    ubBinding = binding
+                    ubName = name
+                    ubFields = fields |> List.map toUniformBufferField
+                    ubSize = size
+                }
+            | _ ->
+                failwith "Not a struct"
+
     let assign (info : RayHitInfo) =
 
         let mapi f =
             (Map.toList >> List.mapi f >> Map.ofList)
 
-        let getFields t =
-            if FSharpType.IsRecord t then
-                FSharpType.GetRecordFields t
-                    |> Array.toList
-                    |> List.map (fun p -> p.Name, p.Type)
-            else
-                []
-
         let uniformBuffers =
             info.neededUniforms 
-                |> mapi (fun i (name, uniform) -> ((0, i), (name, getFields uniform)))
+                |> mapi (fun i (name, uniform) -> ((0, fixedBindings name), (name, getFields uniform)))
 
         let samplers =
             let offset = uniformBuffers.Count
             info.neededSamplers
-                |> mapi (fun i (name, sampler) -> ((0, offset + i), (name, sampler)))
+                |> mapi (fun i (name, sampler) -> ((0, fixedBindings name), (name, sampler)))
 
         let buffers =
             let offset = uniformBuffers.Count + samplers.Count
             info.neededBuffers
-                |> mapi (fun i (name, (dim, buffer)) -> ((0, offset + i), (name, dim, buffer)))
+                |> mapi (fun i (name, (dim, buffer)) -> ((0, fixedBindings name), (name, dim, buffer)))
 
         {
             uniformBuffers = uniformBuffers
@@ -132,6 +187,14 @@ module DummyHelpers =
                                     imageName = name
                                     imageType = imageType
                                 }
+                        | t when t = typeof<VkAccelerationStructureNV> ->
+                            VkDescriptorType.AccelerationStructureNv,
+                            ShaderUniformParameter.AccelerationStructureParameter (name, set, binding)
+
+                        | t when t.IsValueType ->
+                            VkDescriptorType.UniformBuffer,
+                            ShaderUniformParameter.UniformBlockParameter (getUniformBuffer set binding name t)
+
                         | _ ->
                             failwith "no"
  
@@ -139,15 +202,6 @@ module DummyHelpers =
                   |> Seq.map (fun (t, p) ->
                         DescriptorSetLayoutBinding.create t VkShaderStageFlags.RaygenBitNv p device
                   ) |> Seq.toArray
-
-        let bindings =
-            Array.append bindings [|
-                DescriptorSetLayoutBinding.create
-                    VkDescriptorType.AccelerationStructureNv
-                    VkShaderStageFlags.RaygenBitNv
-                    (AccelerationStructureParameter ("scene", 0, 1))
-                    device
-            |]
 
         DescriptorSetLayout.create bindings device
 
@@ -352,7 +406,7 @@ type TraceTask(device : Device, scene : TraceScene) =
     // Top-level acceleration structure
     let instances = scene.objects |> List.mapi (fun i o ->
         let mutable inst = VkGeometryInstance()
-        inst.transform <- M34f(o.transform.Forward.Elements |> Seq.map float32 |> Seq.toArray)
+        inst.transform <- M34f.op_Explicit(o.transform.Forward)
         inst.instanceId <- uint24 <| uint32 i
         inst.mask <- 0xffuy
         inst.instanceOffset <- uint24 <| uint32 (shaderPool |> ShaderPool.getHitGroupIndex o)
@@ -370,6 +424,8 @@ type TraceTask(device : Device, scene : TraceScene) =
     // Descriptor sets
     let descriptorSetLayout = dummyDescriptorSetLayout device raygenInfo (assign raygenInfo)
     let descriptorSet = device.CreateDescriptorSet descriptorSetLayout
+
+    let uniformBuffers = System.Collections.Generic.List<UniformBuffer>()
     
     do for binding in descriptorSetLayout.Bindings do
         match binding.Parameter with
@@ -382,6 +438,18 @@ type TraceTask(device : Device, scene : TraceScene) =
 
                 device.Delete(view)
                 device.Delete(image)
+
+            | UniformBlockParameter layout ->
+                let buffer = device.CreateUniformBuffer layout
+                let value = scene.globals.[Symbol.Create layout.ubName]
+                let typ = raygenInfo.neededUniforms.[layout.ubName]
+
+                let writer = UniformWriters.getWriter 0 (getType typ) typ
+                writer.WriteUnsafeValue(value, buffer.Storage.Pointer)
+                device.Upload(buffer)
+
+                descriptorSet.Update([|UniformBuffer (layout.ubBinding, buffer)|])
+                uniformBuffers.Add(buffer)
 
             | AccelerationStructureParameter (_, _, binding) ->
                 descriptorSet.Update([|Descriptor.AccelerationStructure (binding, tlAS)|])
@@ -415,6 +483,9 @@ type TraceTask(device : Device, scene : TraceScene) =
 
     interface IDisposable with
         member x.Dispose() =
+            for ub in uniformBuffers do
+                device.Delete(ub)
+
             ShaderBindingTable.delete sbt
             AccelerationStructure.delete tlAS
             InstanceBuffer.delete tlAS.Description.instanceBuffer

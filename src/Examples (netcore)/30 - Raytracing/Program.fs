@@ -10,6 +10,7 @@ open System
 open System.IO
 open Aardvark.Base
 
+let camera = Camera.create (CameraView.LookAt (V3d(0, 0, 3), V3d.OOO, V3d.OIO)) (Frustum.perspective 75.0 0.1 1000.0 1.0)
 
 let quad =
     let quad =
@@ -41,30 +42,22 @@ let main argv =
     let whiteShader = File.ReadAllBytes "white.rchit.spv"
     let sphereIntShader = File.ReadAllBytes "sphere.rint.spv"
 
-    let triangleVertexBuffer : MyBuffer =
-        let a = 1.0
-        let h = (sqrt 3.0) * a / 2.0
+    let cubeVertexBuffer : MyBuffer =
+        
+        let positions : V3f[] = 
+            Primitives.unitBox.IndexedAttributes.[DefaultSemantic.Positions]
+                |> unbox
 
-        let b = runtime.CreateBuffer([| V3f(-a / 2.0, -h / 2.0, 0.0); V3f(a / 2.0, -h / 2.0, 0.0); V3f(0.0, h / 2.0, 0.0) |])
+        let b = runtime.CreateBuffer(positions)
         {
             buffer = b.Buffer
             count = b.Count
             offset = b.Offset
             format = typeof<V3f>
         } 
-        
 
-    let triangleIndexBuffer =
-        let b = runtime.CreateBuffer([| 0u; 1u; 2u |])
-        {
-            buffer = b.Buffer
-            count = b.Count
-            offset = b.Offset
-            format = typeof<uint32>
-        }
-
-    let triangleAS =
-        runtime.CreateAccelerationStructure([TraceGeometry.Triangles (triangleVertexBuffer, Some triangleIndexBuffer)])
+    let cubeAS =
+        runtime.CreateAccelerationStructure([TraceGeometry.Triangles (cubeVertexBuffer, None)])
 
     let sphereBuffer =
         runtime.CreateBuffer([| Box3f(V3f(-1), V3f(1)) |])
@@ -73,25 +66,25 @@ let main argv =
         runtime.CreateAccelerationStructure([TraceGeometry.AABBs sphereBuffer])
 
     let obj1 : TraceObject = {
-        transform = Trafo3d.Scale(8.0) * Trafo3d.Translation(0.0, 0.0, 5.0)
+        transform = Trafo3d.RotationZInDegrees(8.0) * Trafo3d.Translation(0.0, -5.0, -5.0)
         closestHitShader = Some chitShader
         anyHitShader = None
         intersectionShader = None
-        geometry = triangleAS
+        geometry = cubeAS
         userData = SymDict.empty
     }
 
     let obj2 : TraceObject = {
-        transform =  Trafo3d.Scale(0.5) * Trafo3d.RotationZInDegrees(90.0) * Trafo3d.Translation(1.0, 0.0, 2.0)
-        closestHitShader = Some whiteShader
+        transform = Trafo3d.Translation(1.0, 0.0, -2.0) * Trafo3d.RotationZInDegrees(15.0)
+        closestHitShader = Some chitShader
         anyHitShader = None
         intersectionShader = None
-        geometry = triangleAS
+        geometry = cubeAS
         userData = SymDict.empty
     }
 
     let obj3 : TraceObject = {
-        transform = Trafo3d.Translation(0.0, 0.0, 3.0)
+        transform = Trafo3d.Translation(-2.0, 0.0, -3.0)
         closestHitShader = Some chitShader
         anyHitShader = None
         intersectionShader = Some sphereIntShader
@@ -102,12 +95,23 @@ let main argv =
     let resultImage : IBackendTexture =
         runtime.CreateTexture(V2i(1024, 1024), TextureFormat.Rgba8, 1, 1)
 
+    let camera =
+        CameraUniform(
+            M44f.op_Explicit camera.cameraView.ViewTrafo.Backward.Transposed,
+            M44f.op_Explicit (Camera.projTrafo camera).Backward.Transposed
+        )
+
+    let settings = RaytracingSettings(0u, 0.0f, 100.0f)
+
     let scene : TraceScene = {
         raygenShader = raygenShader
         missShaders = [missShader]
         callableShaders = []
         objects = [obj1; obj2; obj3]
-        globals = SymDict.empty
+        globals = SymDict.ofList [
+            Symbol.Create "camera", camera :> obj
+            Symbol.Create "raytracingSettings", settings :> obj
+        ]
         buffers = SymDict.empty
         textures = SymDict.ofList [Symbol.Create "resultImage", resultImage]
     }
@@ -125,9 +129,8 @@ let main argv =
     window.Run()
 
     runtime.DeleteTexture resultImage
-    runtime.DeleteAccelerationStructure triangleAS
-    runtime.DeleteBuffer triangleVertexBuffer.buffer
-    runtime.DeleteBuffer triangleIndexBuffer.buffer
+    runtime.DeleteAccelerationStructure cubeAS
+    runtime.DeleteBuffer cubeVertexBuffer.buffer
     runtime.DeleteAccelerationStructure sphereAS
     runtime.DeleteBuffer sphereBuffer.Buffer
 

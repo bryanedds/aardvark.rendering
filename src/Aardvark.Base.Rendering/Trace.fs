@@ -40,7 +40,7 @@ type TraceScene = {
     missShaders     : list<byte[]>
     callableShaders : list<byte[]>
     objects         : list<TraceObject>
-    globals         : SymbolDict<IMod>              
+    globals         : SymbolDict<obj>              
     buffers         : SymbolDict<IBackendBuffer>    // TODO: Adaptive
     textures        : SymbolDict<IBackendTexture>   // TODO: Adaptive
 }
