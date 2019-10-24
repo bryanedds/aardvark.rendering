@@ -6,6 +6,7 @@ open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
+open Aardvark.Rendering.Vulkan.Raytracing
 open Microsoft.FSharp.NativeInterop
 
 #nowarn "9"
@@ -434,6 +435,7 @@ module Resources =
         | AdaptiveCombinedImageSampler of int * array<Option<IResourceLocation<ImageView> * IResourceLocation<Sampler>>>
         | AdaptiveStorageBuffer of int * IResourceLocation<Buffer>
         | AdaptiveStorageImage of int * IResourceLocation<ImageView>
+        | AdaptiveAccelerationStructure of int * IResourceLocation<AccelerationStructure>
 
     type BufferResource(owner : IResourceCache, key : list<obj>, device : Device, usage : VkBufferUsageFlags, input : IMod<IBuffer>) =
         inherit MutableResourceLocation<IBuffer, Buffer>(
@@ -754,6 +756,9 @@ module Resources =
 
                     | AdaptiveUniformBuffer(_,b) ->
                         b.Acquire()
+                    
+                    | AdaptiveAccelerationStructure (_,a) ->
+                        a.Acquire()
 
             ()
 
@@ -772,6 +777,8 @@ module Resources =
                         b.Release()
                     | AdaptiveUniformBuffer(_,b) ->
                         b.Release()
+                    | AdaptiveAccelerationStructure(_,a) ->
+                        a.Release()
 
             match handle with
                 | Some set -> 
@@ -812,6 +819,10 @@ module Resources =
                                     )
 
                                 CombinedImageSampler(slot, arr)
+                                
+                            | AdaptiveAccelerationStructure(slot, a) ->
+                                let tlas = a.Update(token).handle
+                                AccelerationStructure(slot, unbox tlas)
                     )
 
 
@@ -1176,6 +1187,54 @@ module Resources =
         override x.Compute (token : AdaptiveToken) =
             if input.GetValue token then 1 else 0
 
+    type InstanceBufferResource(owner : IResourceCache, key : list<obj>,
+                                device : Device, input : IMod<VkGeometryInstance list>) =
+        inherit MutableResourceLocation<VkGeometryInstance list, InstanceBuffer>(
+            owner, key, 
+            input,
+            {
+                mcreate     = fun instances -> InstanceBuffer.create device instances
+                mdestroy    = fun b -> InstanceBuffer.delete b
+                mtryUpdate  = fun b v -> InstanceBuffer.tryUpdate v b
+            }
+        )
+
+    // TODO: Inherit from MutableResourceLocation and make
+    // use of cheaper updates?
+    type AccelerationStructureResource(owner : IResourceCache, key : list<obj>, 
+                                       device : Device, resources : IResourceLocation list,
+                                       getDesc : AdaptiveToken -> AccelerationStructureDescription) =
+        inherit AbstractResourceLocation<AccelerationStructure>(owner, key)
+
+        let mutable handle = None
+        let mutable version = 0
+
+        override x.Create() =
+            resources |> List.iter (fun r -> r.Acquire())
+
+        override x.Destroy() =
+            resources |> List.iter (fun r -> r.Release())
+            handle |> Option.iter AccelerationStructure.delete
+
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let desc = getDesc token
+
+                let changed =
+                    handle |> Option.map (fun x -> x.Description <> desc)
+                           |> Option.defaultValue true
+
+                if changed then
+                    handle |> Option.iter AccelerationStructure.delete
+                    handle <- Some <| AccelerationStructure.create device desc
+                    inc &version
+                else
+                    ()
+
+                { handle = handle.Value; version = version }
+            else
+                { handle = handle.Value; version = version }
+
 open Resources
 type ResourceManager(user : IResourceUser, device : Device) =
     //let descriptorPool = device.CreateDescriptorPool(1 <<< 22, 1 <<< 22)
@@ -1204,6 +1263,9 @@ type ResourceManager(user : IResourceUser, device : Device) =
     let descriptorBindingCache  = NativeResourceLocationCache<DescriptorSetBinding>(user)
     let indexBindingCache       = NativeResourceLocationCache<IndexBufferBinding>(user)
     let isActiveCache           = NativeResourceLocationCache<int>(user)
+
+    let instanceBufferCache         = ResourceLocationCache<InstanceBuffer>(user)
+    let accelerationStructureCache  = ResourceLocationCache<AccelerationStructure>(user)
     
     static let toInputTopology =
         LookupTable.lookupTable [
@@ -1244,6 +1306,8 @@ type ResourceManager(user : IResourceUser, device : Device) =
         indexBindingCache.Clear()
         isActiveCache.Clear()
 
+        instanceBufferCache.Clear()
+        accelerationStructureCache.Clear()
 
 
     member x.Device = device
@@ -1407,6 +1471,20 @@ type ResourceManager(user : IResourceUser, device : Device) =
         let key = (layout :> obj) :: (values |> List.map (fun (_,v) -> v :> obj))
         uniformBufferCache.GetOrCreate(key, fun cache key -> UniformBufferResource(cache, key, device, layout, writers))
 
+    member x.CreateUniformBuffer(layout : FShade.GLSL.GLSLUniformBuffer, values : SymbolDict<IMod>) =
+        let provider = {
+            new IUniformProvider with
+                member x.TryGetUniform(_, name) =
+                    match values.TryGetValue(name) with
+                        | true, value -> Some value
+                        | _ -> None
+
+            interface IDisposable with
+                member x.Dispose() = ()
+        }
+
+        x.CreateUniformBuffer(Ag.emptyScope, layout, provider, SymDict.empty)
+
     member x.CreateDescriptorSet(layout : DescriptorSetLayout, bindings : list<AdaptiveDescriptor>) =
         descriptorSetCache.GetOrCreate([layout :> obj; bindings :> obj], fun cache key -> new DescriptorSetResource(cache, key, layout, bindings))
         
@@ -1498,6 +1576,41 @@ type ResourceManager(user : IResourceUser, device : Device) =
 
     member x.CreateIsActive(value : IMod<bool>) =
         isActiveCache.GetOrCreate([value :> obj], fun cache key -> IsActiveResource(cache, key, value))
+
+    member x.CreateInstanceBuffer(instances : IMod<VkGeometryInstance list>) =
+        let key = [ instances :> obj ]
+        instanceBufferCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new InstanceBufferResource(cache, key, device, instances)
+        )
+
+    member x.CreateAccelerationStructure(instanceBuffer : IResourceLocation<InstanceBuffer>) =
+        let getDesc (token : AdaptiveToken) =
+            { instanceBuffer = (instanceBuffer.Update token).handle }
+                |> TopLevel
+
+        let key = [ instanceBuffer :> obj ]
+        accelerationStructureCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new AccelerationStructureResource(
+                    cache, key, device, [instanceBuffer :> IResourceLocation], getDesc
+                )
+        )
+
+    member x.CreateAccelerationStructure(desc : IMod<AccelerationStructureDescription>) =
+        let getDesc (token : AdaptiveToken) =
+            desc.GetValue token
+
+        let key = [ desc :> obj ]
+        accelerationStructureCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new AccelerationStructureResource(
+                    cache, key, device, [], getDesc
+                )
+        )
 
     interface IDisposable with
         member x.Dispose() = x.Dispose()

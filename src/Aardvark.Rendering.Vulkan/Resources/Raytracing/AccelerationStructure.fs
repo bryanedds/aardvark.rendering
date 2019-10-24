@@ -12,7 +12,6 @@ type BottomLevelDescription = {
 }
 
 type TopLevelDescription = {
-    instanceCount : uint32
     instanceBuffer : InstanceBuffer
 }
 
@@ -113,8 +112,8 @@ module BottomLevelDescription =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TopLevelDescription =
 
-    let create count buffer =
-        { instanceCount = count; instanceBuffer = buffer }
+    let create buffer =
+        { instanceBuffer = buffer }
     
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AccelerationStructure =
@@ -323,7 +322,7 @@ module AccelerationStructure =
                     VkStructureType.AccelerationStructureInfoNv, 0n,
                     VkAccelerationStructureTypeNV.VkAccelerationStructureTypeTopLevelNv,
                     VkBuildAccelerationStructureFlagsNV.VkBuildAccelerationStructurePreferFastTraceBitNv,
-                    desc.instanceCount, 0u, pGeometries
+                    uint32 desc.instanceBuffer.Count, 0u, pGeometries
                 )
 
             let! pCreateInfo =

@@ -40,16 +40,15 @@ type TraceScene = {
     missShaders     : list<byte[]>
     callableShaders : list<byte[]>
     objects         : list<TraceObject>
-    globals         : SymbolDict<obj>              
-    buffers         : SymbolDict<IBackendBuffer>    // TODO: Adaptive
-    textures        : SymbolDict<IBackendTexture>   // TODO: Adaptive
+    globals         : SymbolDict<IMod>
+    buffers         : SymbolDict<IMod<IBackendBuffer>>
+    textures        : SymbolDict<IMod<ITexture>>
 }
 
 type ITraceTask =
     inherit IDisposable
 
-    //TODO: abstract member Update : unit -> unit
-    abstract member Run : size : V3i -> unit
+    abstract member Run : token : AdaptiveToken -> size : V3i -> unit
 
 type ITraceRuntime =
     inherit IAccelerationStructureRuntime

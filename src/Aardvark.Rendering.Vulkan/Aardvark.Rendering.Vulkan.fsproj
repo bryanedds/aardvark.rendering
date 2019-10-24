@@ -44,6 +44,7 @@
     <Compile Include="Resources\Raytracing\ShaderGroup.fs" />
     <Compile Include="Resources\Raytracing\ShaderBindingTable.fs" />
     <Compile Include="Resources\Raytracing\TracePipeline.fs" />
+    <Compile Include="Resources\Raytracing\ShaderPool.fs" />
     <Compile Include="Resources\Raytracing\InstanceBuffer.fs" />
     <Compile Include="Resources\Raytracing\AccelerationStructure.fs" />
     <Compile Include="Resources\DescriptorSet.fs" />
@@ -60,8 +61,10 @@
     <Compile Include="Swapchain\SwapchainDescription.fs" />
     <Compile Include="Swapchain\Swapchain.fs" />
     <Compile Include="Management\ResourceManager.fs" />
+    <Compile Include="Management\Raytracing\FShadeRTX.fs" />
+    <Compile Include="Management\Raytracing\PreparedTraceScene.fs" />
     <Compile Include="Management\PreparedRenderObject.fs" />
-    <Compile Include="Raytracing\TraceTask.fs" /> 
+    <Compile Include="Runtime\Raytracing\TraceTask.fs" /> 
     <Compile Include="Runtime\DebugReport.fs" />
     <Compile Include="Runtime\GraphicsCommands.fs" />
     <Compile Include="Runtime\CommandTask.fs" />

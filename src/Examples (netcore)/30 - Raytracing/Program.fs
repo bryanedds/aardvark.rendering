@@ -10,8 +10,6 @@ open System
 open System.IO
 open Aardvark.Base
 
-let camera = Camera.create (CameraView.LookAt (V3d(0, 0, 3), V3d.OOO, V3d.OIO)) (Frustum.perspective 75.0 0.1 1000.0 1.0)
-
 let quad =
     let quad =
         let index = [|0;1;2; 0;2;3|]
@@ -32,9 +30,14 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
 
-    let app = new Slim.VulkanApplication(true)
-    let window = app.CreateGameWindow(1)
-    let runtime = app.Runtime :> IRuntime
+    use window = 
+        window {
+            display Display.Mono
+            samples 8
+            backend Backend.Vulkan
+            debug true
+        }
+    let runtime = window.Runtime
 
     let raygenShader = File.ReadAllBytes "primary.rgen.spv"
     let missShader = File.ReadAllBytes "primary.rmiss.spv"
@@ -92,16 +95,18 @@ let main argv =
         userData = SymDict.empty
     }
 
-    let resultImage : IBackendTexture =
+    let resultImage =
         runtime.CreateTexture(V2i(1024, 1024), TextureFormat.Rgba8, 1, 1)
 
-    let camera =
-        CameraUniform(
-            M44f.op_Explicit camera.cameraView.ViewTrafo.Backward.Transposed,
-            M44f.op_Explicit (Camera.projTrafo camera).Backward.Transposed
-        )
+    let viewInv, projInv =
+        let invTrans (t : Trafo3d[]) =
+            M44f.op_Explicit t.[0].Backward.Transposed
 
-    let settings = RaytracingSettings(0u, 0.0f, 100.0f)
+        window.View |> Mod.map invTrans,
+        window.Proj |> Mod.map invTrans
+
+    let bounces, tmin, tmax =
+        ~~0u, ~~0.0f, ~~100.0f
 
     let scene : TraceScene = {
         raygenShader = raygenShader
@@ -109,24 +114,31 @@ let main argv =
         callableShaders = []
         objects = [obj1; obj2; obj3]
         globals = SymDict.ofList [
-            Symbol.Create "camera", camera :> obj
-            Symbol.Create "raytracingSettings", settings :> obj
+            Symbol.Create "viewInverse@", viewInv :> IMod
+            Symbol.Create "projInverse@", projInv :> IMod
+            Symbol.Create "maxBounces@", bounces :> IMod
+            Symbol.Create "tmin@", tmin :> IMod
+            Symbol.Create "tmax@", tmax :> IMod
         ]
         buffers = SymDict.empty
-        textures = SymDict.ofList [Symbol.Create "resultImage", resultImage]
+        textures = SymDict.ofList [Symbol.Create "resultImage", ~~(resultImage :> ITexture)]
     }
 
     let task = runtime.CompileTrace scene
-    task.Run resultImage.Size
-    task.Dispose()
 
-    let sg =
-        quad |> Sg.texture DefaultSemantic.DiffuseColorTexture ~~(resultImage :> ITexture)
+    let output =
+        Mod.custom (fun self ->
+            task.Run self resultImage.Size
+            resultImage :> ITexture
+        )
+
+    window.Scene <-
+        quad |> Sg.diffuseTexture output
              |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
 
-    window.RenderTask <- runtime.CompileRender(window.FramebufferSignature, sg)
-    window.RenderAsFastAsPossible <- true
-    window.Run()
+    window.Run(true)
+
+    task.Dispose()
 
     runtime.DeleteTexture resultImage
     runtime.DeleteAccelerationStructure cubeAS
