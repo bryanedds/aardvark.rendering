@@ -1821,6 +1821,21 @@ module VkFormat =
 module VkImageLayout =
     open KHRSwapchain
 
+    let ofTextureLayout =
+        LookupTable.lookupTable [
+            TextureLayout.Sample, VkImageLayout.ShaderReadOnlyOptimal
+            TextureLayout.ShaderRead, VkImageLayout.ShaderReadOnlyOptimal
+            TextureLayout.ShaderReadWrite, VkImageLayout.General
+            TextureLayout.ShaderWrite, VkImageLayout.General
+            TextureLayout.TransferRead, VkImageLayout.TransferSrcOptimal
+            TextureLayout.TransferWrite, VkImageLayout.TransferDstOptimal
+            TextureLayout.ColorAttachment, VkImageLayout.ColorAttachmentOptimal
+            TextureLayout.DepthStencil, VkImageLayout.DepthStencilAttachmentOptimal
+            TextureLayout.DepthStencilRead, VkImageLayout.DepthStencilReadOnlyOptimal
+            TextureLayout.General, VkImageLayout.General
+            TextureLayout.Present, VkImageLayout.PresentSrcKhr
+        ]
+
     let toAccessFlags =
         LookupTable.lookupTable [
             VkImageLayout.Undefined,                        VkAccessFlags.None
@@ -1866,6 +1881,29 @@ module VkImageLayout =
   
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module VkAccessFlags =
+    
+    let ofResourceAccess flags =
+        let lookup =
+            LookupTable.lookupTable [
+                ResourceAccess.ShaderRead, VkAccessFlags.ShaderReadBit
+                ResourceAccess.ShaderWrite, VkAccessFlags.ShaderWriteBit
+                ResourceAccess.TransferRead, VkAccessFlags.TransferReadBit
+                ResourceAccess.TransferWrite, VkAccessFlags.TransferWriteBit
+                ResourceAccess.IndirectCommandRead, VkAccessFlags.IndirectCommandReadBit
+                ResourceAccess.IndexRead, VkAccessFlags.IndexReadBit
+                ResourceAccess.VertexAttributeRead, VkAccessFlags.VertexAttributeReadBit
+                ResourceAccess.UniformRead, VkAccessFlags.UniformReadBit
+                ResourceAccess.InputRead, VkAccessFlags.InputAttachmentReadBit
+                ResourceAccess.ColorRead, VkAccessFlags.ColorAttachmentReadBit
+                ResourceAccess.ColorWrite, VkAccessFlags.ColorAttachmentWriteBit
+                ResourceAccess.DepthStencilRead, VkAccessFlags.DepthStencilAttachmentReadBit
+                ResourceAccess.DepthStencilWrite, VkAccessFlags.DepthStencilAttachmentWriteBit
+            ]
+
+        flags |> Seq.fold (fun x flag ->
+            x ||| (lookup flag)
+        ) VkAccessFlags.None
+
     let toVkPipelineStageFlags =
         
         LookupTable.lookupTable [

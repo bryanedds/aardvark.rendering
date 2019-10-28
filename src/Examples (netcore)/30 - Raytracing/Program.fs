@@ -96,7 +96,14 @@ let main argv =
     }
 
     let resultImage =
-        runtime.CreateTexture(V2i(1024, 1024), TextureFormat.Rgba8, 1, 1)
+        let mutable current = None
+
+        Mod.custom (fun token ->
+            let s = window.Sizes.GetValue token
+            current |> Option.iter runtime.DeleteTexture
+            current <- Some <| runtime.CreateTexture(s, TextureFormat.Rgba8, 1, 1)
+            current.Value
+        )
 
     let viewInv, projInv =
         let invTrans (t : Trafo3d[]) =
@@ -121,15 +128,16 @@ let main argv =
             Symbol.Create "tmax@", tmax :> IMod
         ]
         buffers = SymDict.empty
-        textures = SymDict.ofList [Symbol.Create "resultImage", ~~(resultImage :> ITexture)]
+        textures = SymDict.ofList [Symbol.Create "resultImage", resultImage |> Mod.map unbox]
     }
 
     let task = runtime.CompileTrace scene
 
     let output =
         Mod.custom (fun self ->
-            task.Run self resultImage.Size
-            resultImage :> ITexture
+            let target = resultImage.GetValue self
+            task.Run self <| TraceCommand.TraceToTexture resultImage
+            target :> ITexture
         )
 
     window.Scene <-
@@ -140,7 +148,7 @@ let main argv =
 
     task.Dispose()
 
-    runtime.DeleteTexture resultImage
+    runtime.DeleteTexture (resultImage.GetValue())
     runtime.DeleteAccelerationStructure cubeAS
     runtime.DeleteBuffer cubeVertexBuffer.buffer
     runtime.DeleteAccelerationStructure sphereAS

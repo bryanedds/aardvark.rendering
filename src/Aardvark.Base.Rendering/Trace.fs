@@ -25,7 +25,6 @@ type IAccelerationStructureRuntime =
     abstract member CreateAccelerationStructure : list<TraceGeometry> -> IAccelerationStructure
     abstract member DeleteAccelerationStructure : IAccelerationStructure -> unit
 
-
 type TraceObject = {
     transform           : Trafo3d                      // TODO: Adaptive
     closestHitShader    : option<byte[]>
@@ -45,10 +44,47 @@ type TraceScene = {
     textures        : SymbolDict<IMod<ITexture>>
 }
 
+[<RequireQualifiedAccess>]
+type TraceCommand =
+    | TraceCmd              of size : IMod<V3i>      
+    | SyncBufferCmd         of buffer : IMod<IBackendBuffer> * src : ResourceAccess seq * dst : ResourceAccess seq
+    | SyncTextureCmd        of texture : IMod<IBackendTexture> * src : ResourceAccess seq * dst : ResourceAccess seq
+    | TransformLayoutCmd    of texture : IMod<IBackendTexture> * layout : TextureLayout
+
+    static member Trace(size : IMod<int>) =
+        size |> Mod.map (fun x -> V3i(x, 1, 1)) |> TraceCommand.TraceCmd
+
+    static member Trace(size : IMod<V2i>) =
+        size |> Mod.map (fun x -> V3i(x, 1)) |> TraceCommand.TraceCmd
+
+    static member Trace(size : IMod<V3i>) =
+        TraceCommand.TraceCmd size
+
+    static member TraceToTexture(texture : IMod<IBackendTexture>) = [
+        TraceCommand.TransformLayout(texture, TextureLayout.General)
+        TraceCommand.Trace(texture |> Mod.map (fun t -> t.Size))
+        TraceCommand.TransformLayout(texture, TextureLayout.ShaderRead)
+    ]
+
+    static member TransformLayout(texture : IMod<IBackendTexture>, layout : TextureLayout) =
+        TraceCommand.TransformLayoutCmd(texture, layout)
+
+    static member Sync(buffer : IMod<IBackendBuffer>, src : ResourceAccess seq, dst : ResourceAccess seq) =
+        TraceCommand.SyncBufferCmd(buffer, src, dst)
+
+    static member Sync(buffer : IMod<IBackendBuffer>, src : ResourceAccess, dst : ResourceAccess) =
+        TraceCommand.SyncBufferCmd(buffer, Seq.singleton src, Seq.singleton dst)
+
+    static member Sync(texture : IMod<IBackendTexture>, src : ResourceAccess seq, dst : ResourceAccess seq) =
+        TraceCommand.SyncTextureCmd(texture, src, dst)
+
+    static member Sync(texture : IMod<IBackendTexture>, src : ResourceAccess, dst : ResourceAccess) =
+        TraceCommand.SyncTextureCmd(texture, Seq.singleton src, Seq.singleton dst)
+
 type ITraceTask =
     inherit IDisposable
 
-    abstract member Run : token : AdaptiveToken -> size : V3i -> unit
+    abstract member Run : token : AdaptiveToken -> commands : List<TraceCommand> -> unit
 
 type ITraceRuntime =
     inherit IAccelerationStructureRuntime

@@ -10,21 +10,6 @@ open System.Runtime.CompilerServices
 #nowarn "9"
 #nowarn "51"
 
-//[<RequireQualifiedAccess>]
-type TextureLayout =
-    | Sample            = 1
-    | TransferRead      = 2
-    | TransferWrite     = 3
-    | ShaderRead        = 4
-    | ShaderWrite       = 5
-    | ShaderReadWrite   = 6
-
-type ResourceAccess =
-    | ShaderRead    = 1
-    | ShaderWrite   = 2
-    | TransferRead  = 3
-    | TransferWrite = 4
-
 type IComputeShader =
     abstract member Runtime : IComputeRuntime
     abstract member LocalSize : V3i

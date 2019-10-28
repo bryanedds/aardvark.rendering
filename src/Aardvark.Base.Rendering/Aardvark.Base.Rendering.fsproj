@@ -28,6 +28,8 @@
     <Compile Include="Types\DrawCallSet.fs" />
     <Compile Include="Types\Camera.fs" />
     <Compile Include="Types\Formats.fs" />
+    <Compile Include="Types\Layouts.fs" />
+    <Compile Include="Types\ResourceAccess.fs" />
     <Compile Include="Resources\Buffers.fs" />
     <Compile Include="Resources\Textures.fs" />
     <Compile Include="Trace.fs" />

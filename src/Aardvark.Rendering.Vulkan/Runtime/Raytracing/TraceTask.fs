@@ -9,7 +9,6 @@ open Aardvark.Rendering.Vulkan.NVRayTracing
 
 open System
 open System.Runtime.InteropServices
-open System.Runtime.CompilerServices
 
 [<Struct; StructLayout(LayoutKind.Sequential)>]
 type CameraUniform =
@@ -168,6 +167,30 @@ module ``Trace Command Extensions`` =
                         Disposable.Empty
                 }
 
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module TraceCommand =
+
+        let toCommand (token : AdaptiveToken) (sbt : ShaderBindingTable) = function
+            | TraceCommand.TraceCmd size ->
+                let size = size.GetValue token
+                Command.TraceRays(sbt.Handle, sbt.RaygenShaderBindingOffset,
+                                  sbt.Handle, sbt.MissShaderBindingOffset, sbt.MissShaderBindingStride,
+                                  sbt.Handle, sbt.HitShaderBindingOffset, sbt.HitShaderBindingStride,
+                                  sbt.Handle, sbt.CallableShaderBindingOffset, sbt.CallableShaderBindingStride,
+                                  uint32 size.X, uint32 size.Y, uint32 size.Z)
+
+            | TraceCommand.SyncBufferCmd(buffer, src, dst) ->
+                let buffer = unbox (buffer.GetValue token)
+                Command.Sync(buffer, VkAccessFlags.ofResourceAccess src, VkAccessFlags.ofResourceAccess dst)
+
+            | TraceCommand.SyncTextureCmd(texture, src, dst) ->
+                let image = unbox<Image> (texture.GetValue token)
+                Command.ImageBarrier(image.[ImageAspect.Color], VkAccessFlags.ofResourceAccess src, VkAccessFlags.ofResourceAccess dst)
+
+            | TraceCommand.TransformLayoutCmd(texture, layout) ->
+                let image = unbox (texture.GetValue token)
+                Command.TransformLayout(image, VkImageLayout.ofTextureLayout layout)
+            
 type TraceTask(device : Device, scene : TraceScene) =
     inherit AdaptiveObject()
 
@@ -190,10 +213,8 @@ type TraceTask(device : Device, scene : TraceScene) =
 
         prep
 
-    member x.Run (token : AdaptiveToken) (size : V3i) =
-        let outputImage = preparedScene.original.textures.[Symbol.Create "resultImage"]
-
-        x.EvaluateAlways token (fun t ->
+    member x.Run (token : AdaptiveToken) (commands : List<TraceCommand>) =
+        x.EvaluateIfNeeded token () (fun t ->
             resources.Update t |> ignore
             preparedScene.Update t
             
@@ -202,18 +223,14 @@ type TraceTask(device : Device, scene : TraceScene) =
             let descriptorSet = preparedScene.descriptorSet.Update t
             let sbt = preparedScene.shaderBindingTable
 
-            let outputImage : Image = unbox <| outputImage.GetValue t
+            use t = device.Token
 
-            device.GraphicsFamily.run {
-                do! Command.TransformLayout(outputImage, VkImageLayout.General)
+            t.enqueue {
                 do! Command.BindPipeline pipeline.Handle
                 do! Command.BindDescriptorSet(descriptorSet.handle.Handle, pipelineLayout.Handle)
-                do! Command.TraceRays(sbt.Handle, sbt.RaygenShaderBindingOffset,
-                                        sbt.Handle, sbt.MissShaderBindingOffset, sbt.MissShaderBindingStride,
-                                        sbt.Handle, sbt.HitShaderBindingOffset, sbt.HitShaderBindingStride,
-                                        sbt.Handle, sbt.CallableShaderBindingOffset, sbt.CallableShaderBindingStride,
-                                        uint32 size.X, uint32 size.Y, uint32 size.Z)
-                do! Command.TransformLayout(outputImage, VkImageLayout.ShaderReadOnlyOptimal)
+
+                for cmd in commands do
+                    do! TraceCommand.toCommand token sbt cmd
             }
         )
 
@@ -221,8 +238,8 @@ type TraceTask(device : Device, scene : TraceScene) =
         preparedScene.Dispose()
 
     interface ITraceTask with
-        member x.Run (token : AdaptiveToken) (size : V3i) =
-            x.Run token size
+        member x.Run (token : AdaptiveToken) (commands : List<TraceCommand>) =
+            x.Run token commands
 
     interface IDisposable with
         member x.Dispose() =
