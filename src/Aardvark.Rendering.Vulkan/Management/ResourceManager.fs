@@ -89,7 +89,7 @@ type AbstractResourceLocation<'a>(owner : IResourceCache, key : list<obj>) =
                 x.OutOfDate <- true
         )
   
-    member x.RelaseAll() =
+    member x.ReleaseAll() =
         lock x (fun () ->
             refCount <- 0
             owner.Remove key
@@ -112,7 +112,7 @@ type AbstractResourceLocation<'a>(owner : IResourceCache, key : list<obj>) =
 
         member x.Acquire() = x.Acquire()
         member x.Release() = x.Release()
-        member x.ReleaseAll() = x.RelaseAll()
+        member x.ReleaseAll() = x.ReleaseAll()
         member x.Owner = owner
         member x.Key = key
 
