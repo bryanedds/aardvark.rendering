@@ -42,7 +42,6 @@ let main argv =
     let raygenShader = File.ReadAllBytes "primary.rgen.spv"
     let missShader = File.ReadAllBytes "primary.rmiss.spv"
     let chitShader = File.ReadAllBytes "primary.rchit.spv"
-    let whiteShader = File.ReadAllBytes "white.rchit.spv"
     let sphereIntShader = File.ReadAllBytes "sphere.rint.spv"
 
     let cubeVertexBuffer : MyBuffer =
@@ -68,17 +67,25 @@ let main argv =
     let sphereAS =
         runtime.CreateAccelerationStructure([TraceGeometry.AABBs sphereBuffer])
 
+    let dynamicRotation speed =
+        let startTime = System.DateTime.Now
+        window.Time |> Mod.map (fun t ->
+            let t = (t - startTime).TotalSeconds
+            Trafo3d.RotationZ (speed * t)
+        )
+
     let obj1 : TraceObject = {
-        transform = Trafo3d.RotationZInDegrees(8.0) * Trafo3d.Translation(0.0, -5.0, -5.0)
+        transform = dynamicRotation 0.25 |> Mod.map (fun rot -> rot * Trafo3d.Translation(0.0, -5.0, -5.0))
         closestHitShader = Some chitShader
         anyHitShader = None
         intersectionShader = None
         geometry = cubeAS
         userData = SymDict.empty
     }
+       
 
     let obj2 : TraceObject = {
-        transform = Trafo3d.Translation(1.0, 0.0, -2.0) * Trafo3d.RotationZInDegrees(15.0)
+        transform = dynamicRotation -2.0 |> Mod.map (fun rot -> rot * Trafo3d.Translation(-1.0, 0.0, -2.0))
         closestHitShader = Some chitShader
         anyHitShader = None
         intersectionShader = None
@@ -87,7 +94,7 @@ let main argv =
     }
 
     let obj3 : TraceObject = {
-        transform = Trafo3d.Translation(-2.0, 0.0, -3.0)
+        transform =  dynamicRotation 1.0 |> Mod.map (fun rot -> Trafo3d.Translation(4.0, 0.0, -2.0) * rot)
         closestHitShader = Some chitShader
         anyHitShader = None
         intersectionShader = Some sphereIntShader

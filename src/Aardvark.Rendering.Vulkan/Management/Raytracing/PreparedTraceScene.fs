@@ -158,19 +158,20 @@ type DevicePreparedRenderObjectExtensions private() =
         let shaderPool = ShaderPool.create this.Device scene
 
         // Top-level acceleration structure
-        let instances = scene.objects |> List.mapi (fun i o ->
-            let mutable inst = VkGeometryInstance()
-            inst.transform <- M34f.op_Explicit o.transform.Forward
-            inst.instanceId <- uint24 <| uint32 i
-            inst.mask <- 0xffuy
-            inst.instanceOffset <- uint24 <| uint32 (shaderPool |> ShaderPool.getHitGroupIndex o)
-            inst.flags <- uint8 VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv
-            inst.accelerationStructureHandle <- unbox o.geometry.Handle
+        // TODO: Optimize... hard
+        let instances =
+            scene.objects |> List.mapi (fun i o ->
+                adaptive {
+                    let! trafo = o.transform
+                    return VkGeometryInstance(
+                        trafo, i, 0xffuy, shaderPool |> ShaderPool.getHitGroupIndex o,
+                        VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
+                        unbox o.geometry.Handle
+                    )
+                }
+            ) |> Mod.mapN List.ofSeq
 
-            inst
-        )
-
-        let instanceBuffer = this.CreateInstanceBuffer(Mod.constant instances)
+        let instanceBuffer = this.CreateInstanceBuffer(instances)
         let tlAS = this.CreateAccelerationStructure(instanceBuffer)
 
         // Descriptor sets

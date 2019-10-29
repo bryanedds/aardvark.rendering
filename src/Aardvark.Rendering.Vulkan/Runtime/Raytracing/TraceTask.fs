@@ -216,7 +216,6 @@ type TraceTask(device : Device, scene : TraceScene) =
     member x.Run (token : AdaptiveToken) (commands : List<TraceCommand>) =
         x.EvaluateIfNeeded token () (fun t ->
             resources.Update t |> ignore
-            preparedScene.Update t
             
             let pipeline = preparedScene.pipeline
             let pipelineLayout = pipeline.Description.layout

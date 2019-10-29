@@ -24,12 +24,23 @@ type uint24 =
 
 type VkGeometryInstance =
     struct
-        val mutable public transform : M34f
-        val mutable public instanceId : uint24
-        val mutable public mask : uint8
-        val mutable public instanceOffset : uint24
-        val mutable public flags : uint8
-        val mutable public accelerationStructureHandle : uint64  
+        val public transform : M34f
+        val public instanceId : uint24
+        val public mask : uint8
+        val public instanceOffset : uint24
+        val public flags : uint8
+        val public accelerationStructureHandle : uint64
+
+        new (transform : Trafo3d, instanceId : int, mask : uint8,
+                instanceOffset : int, flags : VkGeometryInstanceFlagsNV, blAS : uint64) =
+            {
+                transform = M34f.op_Explicit transform.Forward
+                instanceId = uint24 <| uint32 instanceId
+                mask = mask
+                instanceOffset = uint24 <| uint32 instanceOffset
+                flags = uint8 flags
+                accelerationStructureHandle = blAS
+            }
     end
 
 type InstanceBuffer =

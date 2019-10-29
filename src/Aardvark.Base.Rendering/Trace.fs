@@ -26,7 +26,7 @@ type IAccelerationStructureRuntime =
     abstract member DeleteAccelerationStructure : IAccelerationStructure -> unit
 
 type TraceObject = {
-    transform           : Trafo3d                      // TODO: Adaptive
+    transform           : IMod<Trafo3d>
     closestHitShader    : option<byte[]>
     anyHitShader        : option<byte[]>
     intersectionShader  : option<byte[]>

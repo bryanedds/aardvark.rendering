@@ -1220,16 +1220,9 @@ module Resources =
             if x.OutOfDate then
                 let desc = getDesc token
 
-                let changed =
-                    handle |> Option.map (fun x -> x.Description <> desc)
-                           |> Option.defaultValue true
-
-                if changed then
-                    handle |> Option.iter AccelerationStructure.delete
-                    handle <- Some <| AccelerationStructure.create device desc
-                    inc &version
-                else
-                    ()
+                handle |> Option.iter AccelerationStructure.delete
+                handle <- Some <| AccelerationStructure.create device desc
+                inc &version
 
                 { handle = handle.Value; version = version }
             else
