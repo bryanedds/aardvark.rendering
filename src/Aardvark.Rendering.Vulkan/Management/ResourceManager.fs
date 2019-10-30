@@ -1187,6 +1187,31 @@ module Resources =
         override x.Compute (token : AdaptiveToken) =
             if input.GetValue token then 1 else 0
 
+    (*type InstanceBufferResource'(owner : IResourceCache, key : list<obj>,
+                                 device : Device, instances : list<IMod<VkGeometryInstance>>) =
+        inherit AbstractResourceLocation<InstanceBuffer>(owner, key)
+
+        let mutable handle = None
+        let mutable version = 0
+
+        override x.Create() =
+            ()
+
+        override x.Destroy() =
+            handle |> Option.iter InstanceBuffer.delete
+
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let desc = getDesc token
+
+                handle |> Option.iter AccelerationStructure.delete
+                handle <- Some <| AccelerationStructure.create device desc
+                inc &version
+
+                { handle = handle.Value; version = version }
+            else
+                { handle = handle.Value; version = version }*)
+
     type InstanceBufferResource(owner : IResourceCache, key : list<obj>,
                                 device : Device, input : IMod<VkGeometryInstance list>) =
         inherit MutableResourceLocation<VkGeometryInstance list, InstanceBuffer>(
@@ -1199,8 +1224,6 @@ module Resources =
             }
         )
 
-    // TODO: Inherit from MutableResourceLocation and make
-    // use of cheaper updates?
     type AccelerationStructureResource(owner : IResourceCache, key : list<obj>, 
                                        device : Device, resources : IResourceLocation list,
                                        getDesc : AdaptiveToken -> AccelerationStructureDescription) =
@@ -1208,6 +1231,17 @@ module Resources =
 
         let mutable handle = None
         let mutable version = 0
+
+        let create desc =
+            handle <- Some (AccelerationStructure.create device desc)
+            inc &version
+
+        let update desc s =
+            let success = AccelerationStructure.tryUpdate desc s
+
+            if not success then
+                AccelerationStructure.delete s
+                create desc
 
         override x.Create() =
             resources |> List.iter (fun r -> r.Acquire())
@@ -1220,9 +1254,9 @@ module Resources =
             if x.OutOfDate then
                 let desc = getDesc token
 
-                handle |> Option.iter AccelerationStructure.delete
-                handle <- Some <| AccelerationStructure.create device desc
-                inc &version
+                match handle with
+                    | Some s -> update desc s
+                    | None -> create desc
 
                 { handle = handle.Value; version = version }
             else

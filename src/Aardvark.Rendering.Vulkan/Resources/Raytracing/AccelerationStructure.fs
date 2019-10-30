@@ -7,18 +7,6 @@ open Aardvark.Rendering.Vulkan
 open Aardvark.Rendering.Vulkan.NVRayTracing
 open Microsoft.FSharp.NativeInterop
 
-type BottomLevelDescription = {
-    geometries : TraceGeometry list
-}
-
-type TopLevelDescription = {
-    instanceBuffer : InstanceBuffer
-}
-
-type AccelerationStructureDescription =
-    | BottomLevel of BottomLevelDescription
-    | TopLevel of TopLevelDescription
-
 [<AbstractClass>]
 type AccelerationStructure =
     class
@@ -84,36 +72,94 @@ module private AccelerationStructureHelpers =
     let getStride (t : System.Type) =
         uint64 <| Marshal.SizeOf(t)
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module BottomLevelDescription =
-
-    let empty =
-        { geometries = [] }
-
-    let addGeometry geometry info =
-        { info with geometries = geometry::info.geometries}
-
-    let addIndexedTriangles vertexBuffer indexBuffer info =
-        info |> addGeometry (
-            Triangles(vertexBuffer, Some indexBuffer)
-        )
-
-    let addTriangles vertexBuffer info =
-        info |> addGeometry (
-            Triangles(vertexBuffer, None)
-        )
-    
-    let indexedTriangles vertexBuffer indexBuffer =
-        empty |> addIndexedTriangles vertexBuffer indexBuffer
-
-    let triangles vertexBuffer =
-        empty |> addTriangles vertexBuffer
+    // The VkAccelerationStructureInfoNV is a bit finicky
+    // since it contains a pointer to an array of VkGeometryNV
+    type AccelerationStructureInfo =
+        {
+            pGeometries : nativeptr<VkGeometryNV>
+            data : VkAccelerationStructureInfoNV
+        }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module TopLevelDescription =
+module private AccelerationStructureInfo =
 
-    let create buffer =
-        { instanceBuffer = buffer }
+    let create (pGeometries : nativeptr<VkGeometryNV>) (geometryCount : int) (instanceCount : int) =
+        let kind =
+            if instanceCount > 0 then
+                VkAccelerationStructureTypeNV.VkAccelerationStructureTypeTopLevelNv
+            else
+                VkAccelerationStructureTypeNV.VkAccelerationStructureTypeBottomLevelNv
+
+        let info =
+            VkAccelerationStructureInfoNV(
+                VkStructureType.AccelerationStructureInfoNv, 0n, kind,
+                VkBuildAccelerationStructureFlagsNV.VkBuildAccelerationStructurePreferFastTraceBitNv |||
+                VkBuildAccelerationStructureFlagsNV.VkBuildAccelerationStructureAllowUpdateBitNv,
+                uint32 instanceCount, uint32 geometryCount, pGeometries
+            )
+
+        {
+            pGeometries = pGeometries
+            data = info
+        }
+
+    let allocBottomLevel (desc : BottomLevelDescription) =
+        let createTriangles (vb : MyBuffer) (ib : option<MyBuffer>) =
+            let triangles =
+                match ib with
+                    | None ->
+                        VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
+                            getBufferHandle vb.buffer, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
+                            VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, VkBuffer.Null, 0UL)
+                    | Some ib ->
+                        VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
+                            getBufferHandle vb.buffer, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
+                            getBufferHandle ib.buffer, uint64 ib.offset, uint32 ib.count, getIndexType ib.format,
+                            VkBuffer.Null, 0UL)
+
+            VkGeometryNV(
+                VkStructureType.GeometryNv, 0n,
+                VkGeometryTypeNV.VkGeometryTypeTrianglesNv,
+                VkGeometryDataNV(triangles,
+                    VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n, VkBuffer.Null, 0u, 0u, 0UL)
+                ),
+                VkGeometryFlagsNV.VkGeometryOpaqueBitNv
+            )
+
+        let createAABB (buffer : IBuffer<'a>) =
+            VkGeometryNV(
+                VkStructureType.GeometryNv, 0n,
+                VkGeometryTypeNV.VkGeometryTypeAabbsNv,
+                VkGeometryDataNV(
+                    VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
+                        VkBuffer.Null, 0UL, 0u, 0UL, VkFormat.Undefined,
+                        VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv,
+                        VkBuffer.Null, 0UL),
+                    VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n,
+                        getBufferHandle buffer.Buffer, uint32 buffer.Count, uint32 sizeof<'a>, uint64 buffer.Offset)
+                ),
+                VkGeometryFlagsNV.VkGeometryOpaqueBitNv
+            )
+
+        let ptr = NativePtr.alloc<VkGeometryNV> desc.geometries.Length
+
+        desc.geometries |> List.iteri (fun i g ->
+            match g with
+                | Triangles(vb, ib) -> ptr.[i] <- createTriangles vb ib
+                | AABBs buffer -> ptr.[i] <- createAABB buffer
+        )
+
+        create ptr desc.geometries.Length 0
+
+    let allocTopLevel (desc : TopLevelDescription) =
+        create NativePtr.zero 0 desc.instanceBuffer.Count
+
+    let alloc = function
+        | TopLevel desc -> allocTopLevel desc
+        | BottomLevel desc -> allocBottomLevel desc
+
+    let free (info : AccelerationStructureInfo) =
+        NativePtr.free info.pGeometries
     
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AccelerationStructure =
@@ -133,8 +179,18 @@ module AccelerationStructure =
                 return pReqs.Value.memoryRequirements
             }
 
+        let build, update =
+            get VkAccelerationStructureMemoryRequirementsTypeNV.VkAccelerationStructureMemoryRequirementsTypeBuildScratchNv,
+            get VkAccelerationStructureMemoryRequirementsTypeNV.VkAccelerationStructureMemoryRequirementsTypeUpdateScratchNv
+
+        // Build and update should require the same type of memory
+        // but may differ in size? So we take the larger one as scratch
+        // buffer memory
+        assert (build.alignment = update.alignment)
+        assert (build.memoryTypeBits = update.memoryTypeBits)
+
         get VkAccelerationStructureMemoryRequirementsTypeNV.VkAccelerationStructureMemoryRequirementsTypeObjectNv,
-        get VkAccelerationStructureMemoryRequirementsTypeNV.VkAccelerationStructureMemoryRequirementsTypeBuildScratchNv
+        if build.size > update.size then build else update
 
     let private allocateResultMemory (requirements : VkMemoryRequirements) (s : AccelerationStructure) =
         native {
@@ -184,18 +240,30 @@ module AccelerationStructure =
           |> retrieveHandle
           |> ignore
 
-    let private build (info : VkAccelerationStructureInfoNV) (instanceBuffer : VkBuffer) (s : AccelerationStructure) =
+    let private build (info : AccelerationStructureInfo) (updateOnly : bool) (s : AccelerationStructure) =
+        let instanceBuffer =
+            match s.Description with
+                | TopLevel desc -> desc.instanceBuffer.Handle
+                | _ -> VkBuffer.Null
+
+        // For updates we use the current handle as source and
+        // destination
+        let src =
+            if updateOnly then
+                s.Handle
+            else
+                VkAccelerationStructureNV.Null
+
         let build = { new Command() with
             member x.Compatible = QueueFlags.Graphics
             member x.Enqueue cmd =
                 cmd.AppendCommand()
 
                 native {
-                    let! pInfo = info
+                    let! pInfo = info.data
                     VkRaw.vkCmdBuildAccelerationStructureNV(
                         cmd.Handle, pInfo, instanceBuffer, 0UL,
-                        0u, s.Handle,
-                        VkAccelerationStructureNV.Null,
+                        0u, s.Handle, src,
                         s.ScratchBuffer.Value.Handle, 0UL
                     )
                 }
@@ -227,121 +295,81 @@ module AccelerationStructure =
                 Disposable.Empty
         }
 
-        allocateMemory s
+        // Allocate memory unless we do an update only
+        if not updateOnly then
+            allocateMemory s
+
+        // Build and sync
         s.Device.GraphicsFamily.run {
             do! build
             do! barrier
         }
 
-    let createBottomLevel (device : Device) (desc : BottomLevelDescription) =
-
-        let createTriangles (vb : MyBuffer) (ib : option<MyBuffer>) =
-            let triangles =
-                match ib with
-                    | None ->
-                        VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
-                            getBufferHandle vb.buffer, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
-                            VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, VkBuffer.Null, 0UL)
-                    | Some ib ->
-                        VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
-                            getBufferHandle vb.buffer, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
-                            getBufferHandle ib.buffer, uint64 ib.offset, uint32 ib.count, getIndexType ib.format,
-                            VkBuffer.Null, 0UL)
-
-            VkGeometryNV(
-                VkStructureType.GeometryNv, 0n, 
-                VkGeometryTypeNV.VkGeometryTypeTrianglesNv,
-                VkGeometryDataNV(triangles,
-                    VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n, VkBuffer.Null, 0u, 0u, 0UL)
-                ),
-                VkGeometryFlagsNV.VkGeometryOpaqueBitNv
-            )
- 
-        let createAABB (buffer : IBuffer<'a>) =
-            VkGeometryNV(
-                VkStructureType.GeometryNv, 0n, 
-                VkGeometryTypeNV.VkGeometryTypeAabbsNv,
-                VkGeometryDataNV(
-                    VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
-                        VkBuffer.Null, 0UL, 0u, 0UL, VkFormat.Undefined,
-                        VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, 
-                        VkBuffer.Null, 0UL),
-                    VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n,
-                        getBufferHandle buffer.Buffer, uint32 buffer.Count, uint32 sizeof<'a>, uint64 buffer.Offset)
-                ),
-                VkGeometryFlagsNV.VkGeometryOpaqueBitNv
-            )
-        
-        let geometries =
-            desc.geometries |> List.map (fun g ->
-                match g with
-                    | Triangles(vb, ib) ->  createTriangles vb ib
-                    | AABBs buffer -> createAABB buffer
-            ) |> List.toArray
-
+    let private createHandle (device : Device) (info : AccelerationStructureInfo) =
         native {
-            let! pGeometries = geometries
-        
-            let info =
-                VkAccelerationStructureInfoNV(
-                    VkStructureType.AccelerationStructureInfoNv, 0n,
-                    VkAccelerationStructureTypeNV.VkAccelerationStructureTypeBottomLevelNv,
-                    VkBuildAccelerationStructureFlagsNV.VkBuildAccelerationStructurePreferFastTraceBitNv,
-                    0u, uint32 geometries.Length, pGeometries
-                )
-
             let! pCreateInfo =
                 VkAccelerationStructureCreateInfoNV(
-                    VkStructureType.AccelerationStructureCreateInfoNv, 0n, 0UL, info
+                    VkStructureType.AccelerationStructureCreateInfoNv, 0n, 0UL, info.data
                 )
 
             let! pHandle = VkAccelerationStructureNV.Null
             VkRaw.vkCreateAccelerationStructureNV(device.Handle, pCreateInfo, NativePtr.zero, pHandle)
-                |> check "could not create bottom-level acceleration structure"
+                |> check "could not create acceleration structure"
 
-            let s = new BottomLevelAccelerationStructure(device, !!pHandle, desc)
-            s |> build info VkBuffer.Null
-            return s
+            return !!pHandle
         }
 
-    let createTopLevel (device : Device) (desc : TopLevelDescription) =
-        let geometries = 
-            VkGeometryNV(
-                VkStructureType.GeometryNv, 0n,
-                VkGeometryTypeNV.VkGeometryTypeTrianglesNv,
-                VkGeometryDataNV(), VkGeometryFlagsNV.None
-            )
+    let create (device : Device) (desc : AccelerationStructureDescription) =
+        let info = AccelerationStructureInfo.alloc desc
+        let handle = createHandle device info
 
-        let instanceBuffer = desc.instanceBuffer.Handle
+        let accel =
+            match desc with
+                | TopLevel desc ->
+                    new TopLevelAccelerationStructure(device, handle, desc)
+                        :> AccelerationStructure
+                | BottomLevel desc ->
+                    new BottomLevelAccelerationStructure(device, handle, desc)
+                        :> AccelerationStructure
 
-        native {
-            let! pGeometries = geometries
+        accel |> build info false
+        AccelerationStructureInfo.free info
+        accel
+
+    let createBottomLevel (device : Device) (desc : BottomLevelDescription) : BottomLevelAccelerationStructure =
+        create device (BottomLevel desc)
+            |> unbox
+
+    let createTopLevel (device : Device) (desc : TopLevelDescription) : TopLevelAccelerationStructure =
+        create device (TopLevel desc)
+            |> unbox
+
+    let tryUpdate (desc : AccelerationStructureDescription) (s : AccelerationStructure) =
+
+        let isReuseable =
+            match desc, s.Description with
+                | TopLevel dst, TopLevel src ->
+                    // If we have fewer or the same number of instances we can
+                    // reuse the acceleration structure
+                    dst.instanceBuffer.Count <= src.instanceBuffer.Count
+
+                | BottomLevel _, TopLevel _ ->
+                    // The Vulkan spec is very cryptic on when a bottom level acceleration
+                    // data structure can be reused for an update. For now we just force a full
+                    // rebuild.
+                    false
+
+                | _ ->
+                    false
         
-            let info =
-                VkAccelerationStructureInfoNV(
-                    VkStructureType.AccelerationStructureInfoNv, 0n,
-                    VkAccelerationStructureTypeNV.VkAccelerationStructureTypeTopLevelNv,
-                    VkBuildAccelerationStructureFlagsNV.VkBuildAccelerationStructurePreferFastTraceBitNv,
-                    uint32 desc.instanceBuffer.Count, 0u, pGeometries
-                )
+        if isReuseable then
+            let info = AccelerationStructureInfo.alloc desc
+            s |> build info true
+            AccelerationStructureInfo.free info
 
-            let! pCreateInfo =
-                VkAccelerationStructureCreateInfoNV(
-                    VkStructureType.AccelerationStructureCreateInfoNv, 0n, 0UL, info
-                )
-
-            let! pHandle = VkAccelerationStructureNV.Null
-            VkRaw.vkCreateAccelerationStructureNV(device.Handle, pCreateInfo, NativePtr.zero, pHandle)
-                |> check "could not create top-level acceleration structure"
-
-            let s = new TopLevelAccelerationStructure(device, !!pHandle, desc)
-            s |> build info instanceBuffer
-            return s
-        }
-        
-    let create (device : Device) = function
-        | TopLevel desc -> createTopLevel device desc :> AccelerationStructure
-        | BottomLevel desc -> createBottomLevel device desc :> AccelerationStructure
+            true
+        else
+            false
     
     let delete (s : AccelerationStructure) =
         if s.Handle.IsValid then

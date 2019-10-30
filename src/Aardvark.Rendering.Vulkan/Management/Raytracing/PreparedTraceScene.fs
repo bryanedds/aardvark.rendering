@@ -158,7 +158,10 @@ type DevicePreparedRenderObjectExtensions private() =
         let shaderPool = ShaderPool.create this.Device scene
 
         // Top-level acceleration structure
-        // TODO: Optimize... hard
+        // We use mapN meaning that a change in a single instance does trigger an update
+        // for the whole instance buffer. This should be fine since the buffer is of limited size even with
+        // a high instance count (64 bytes per instance). More importantly, multiple changed instances
+        // will still only result in a single buffer write.
         let instances =
             scene.objects |> List.mapi (fun i o ->
                 adaptive {

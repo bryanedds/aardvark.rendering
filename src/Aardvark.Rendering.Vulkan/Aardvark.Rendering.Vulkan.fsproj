@@ -46,6 +46,7 @@
     <Compile Include="Resources\Raytracing\TracePipeline.fs" />
     <Compile Include="Resources\Raytracing\ShaderPool.fs" />
     <Compile Include="Resources\Raytracing\InstanceBuffer.fs" />
+    <Compile Include="Resources\Raytracing\AccelerationStructureDescription.fs" />
     <Compile Include="Resources\Raytracing\AccelerationStructure.fs" />
     <Compile Include="Resources\DescriptorSet.fs" />
     <Compile Include="Resources\States.fs" />

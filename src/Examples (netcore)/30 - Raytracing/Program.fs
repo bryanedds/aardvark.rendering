@@ -44,22 +44,37 @@ let main argv =
     let chitShader = File.ReadAllBytes "primary.rchit.spv"
     let sphereIntShader = File.ReadAllBytes "sphere.rint.spv"
 
-    let cubeVertexBuffer : MyBuffer =
+    let cubeVertexBuffer, cubeIndexBuffer =
         
-        let positions : V3f[] = 
-            Primitives.unitBox.IndexedAttributes.[DefaultSemantic.Positions]
+        let box = Box3d.FromCenterAndSize(V3d.Zero, V3d.One)
+        let geometry = IndexedGeometryPrimitives.Box.solidBox box C4b.White
+
+        let positions : V3f[] =
+            geometry.IndexedAttributes.[DefaultSemantic.Positions]
                 |> unbox
 
-        let b = runtime.CreateBuffer(positions)
+        let indices : uint32[] =
+            geometry.IndexArray
+                |> unbox
+
+        let vb = runtime.CreateBuffer(positions)
+        let ib = runtime.CreateBuffer(indices)
+
         {
-            buffer = b.Buffer
-            count = b.Count
-            offset = b.Offset
+            buffer = vb.Buffer
+            count = vb.Count
+            offset = vb.Offset
             format = typeof<V3f>
-        } 
+        },
+        {
+            buffer = ib.Buffer
+            count = ib.Count
+            offset = ib.Offset
+            format = typeof<uint32>
+        }
 
     let cubeAS =
-        runtime.CreateAccelerationStructure([TraceGeometry.Triangles (cubeVertexBuffer, None)])
+        runtime.CreateAccelerationStructure([TraceGeometry.Triangles (cubeVertexBuffer, Some cubeIndexBuffer)])
 
     let sphereBuffer =
         runtime.CreateBuffer([| Box3f(V3f(-1), V3f(1)) |])
@@ -158,6 +173,7 @@ let main argv =
     runtime.DeleteTexture (resultImage.GetValue())
     runtime.DeleteAccelerationStructure cubeAS
     runtime.DeleteBuffer cubeVertexBuffer.buffer
+    runtime.DeleteBuffer cubeIndexBuffer.buffer
     runtime.DeleteAccelerationStructure sphereAS
     runtime.DeleteBuffer sphereBuffer.Buffer
 
