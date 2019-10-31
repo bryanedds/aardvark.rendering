@@ -30,14 +30,17 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
 
-    use window = 
-        window {
-            display Display.Mono
-            samples 8
-            backend Backend.Vulkan
-            debug true
-        }
-    let runtime = window.Runtime
+    let app = new Aardvark.Application.Slim.VulkanApplication()
+    let window = app.CreateGameWindow(1)
+
+    //use window = 
+    //    window {
+    //        display Display.Mono
+    //        samples 8
+    //        backend Backend.Vulkan
+    //        debug false
+    //    }
+    let runtime = window.Runtime :> IRuntime
 
     let raygenShader = File.ReadAllBytes "primary.rgen.spv"
     let missShader = File.ReadAllBytes "primary.rmiss.spv"
@@ -82,7 +85,62 @@ let main argv =
     let sphereAS =
         runtime.CreateAccelerationStructure([TraceGeometry.AABBs sphereBuffer])
 
-    let dynamicRotation speed =
+    let objects = 
+        let totalCount = 5000
+        let dynamicCount = 0//totalCount / 2
+
+        let rand = RandomSystem()
+
+        let time i =
+            if i < dynamicCount then
+                let startTime = DateTime.Now
+                window.Time |> Mod.map (fun t -> (t - startTime).TotalSeconds)
+            else
+                Mod.constant 0.0
+
+        let pos = [
+            for _ in 0 .. totalCount - 1 do
+                let r = rand.UniformDouble() * 25.0 + 10.0
+                let phi = rand.UniformDouble() * Constant.PiTimesTwo
+
+                let rot = 
+                    let r = rand.UniformV3dDirection() 
+                    let angle = rand.UniformDouble() * Constant.PiTimesTwo
+                    Trafo3d.Rotation(r, angle)
+                        
+                let randomAxis = rand.UniformV3dDirection() 
+                let randomTurnrate = rand.UniformDouble() * 2.0
+                let randomMovespeed = (rand.UniformDouble() - 0.5) * 0.4 + 1.0
+
+                let p = V3d(r * cos phi, r * sin phi, 0.0)
+                yield randomAxis, randomTurnrate, randomMovespeed, rot * Trafo3d.Translation(p)
+        ]
+
+        let trafos =
+            pos |> List.mapi (fun i (randomAxis, randomTurnrate, randomMovespeed, trafo) ->
+                time i |> Mod.map (fun mt ->
+                    let rot = Trafo3d.Rotation(randomAxis,randomTurnrate * mt * 1.5)
+
+                    let trans = 
+                        trafo * 
+                        Trafo3d.RotationZ (randomMovespeed * 0.25 * mt)
+
+                    rot * trans
+                )
+            )
+
+        trafos |> List.map (fun trafo ->
+            {
+                transform = trafo
+                closestHitShader = Some chitShader
+                anyHitShader = None
+                intersectionShader = None
+                geometry = cubeAS
+                userData = SymDict.empty
+            }
+        )
+
+    (*let dynamicRotation speed =
         let startTime = System.DateTime.Now
         window.Time |> Mod.map (fun t ->
             let t = (t - startTime).TotalSeconds
@@ -115,7 +173,7 @@ let main argv =
         intersectionShader = Some sphereIntShader
         geometry = sphereAS
         userData = SymDict.empty
-    }
+    }*)
 
     let resultImage =
         let mutable current = None
@@ -127,12 +185,18 @@ let main argv =
             current.Value
         )
 
-    let viewInv, projInv =
-        let invTrans (t : Trafo3d[]) =
-            M44f.op_Explicit t.[0].Backward.Transposed
+    let initialView = CameraView.LookAt(V3d(2.0,2.0,2.0), V3d.Zero, V3d.OOI)
+    let frustum = 
+        window.Sizes 
+            |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 50.0 (float s.X / float s.Y))
+    let cameraView = DefaultCameraController.control window.Mouse window.Keyboard window.Time initialView
 
-        window.View |> Mod.map invTrans,
-        window.Proj |> Mod.map invTrans
+    let viewInv, projInv =
+        let invTrans (t : Trafo3d) =
+            M44f.op_Explicit t.Backward.Transposed
+
+        cameraView |> Mod.map (CameraView.viewTrafo >> invTrans),
+        frustum |> Mod.map (Frustum.projTrafo >> invTrans)
 
     let bounces, tmin, tmax =
         ~~0u, ~~0.0f, ~~100.0f
@@ -141,7 +205,7 @@ let main argv =
         raygenShader = raygenShader
         missShaders = [missShader]
         callableShaders = []
-        objects = [obj1; obj2; obj3]
+        objects = objects
         globals = SymDict.ofList [
             Symbol.Create "viewInverse@", viewInv :> IMod
             Symbol.Create "projInverse@", projInv :> IMod
@@ -155,18 +219,43 @@ let main argv =
 
     let task = runtime.CompileTrace scene
 
-    let output =
-        Mod.custom (fun self ->
-            let target = resultImage.GetValue self
-            task.Run self <| TraceCommand.TraceToTexture resultImage
-            target :> ITexture
+    let sw = System.Diagnostics.Stopwatch()
+    let mutable iter = 0
+    //let output =
+    //    Mod.custom (fun self ->
+    //        let target = resultImage.GetValue self
+    //        sw.Start()
+    //        task.Run self <| TraceCommand.TraceToTexture resultImage
+    //        sw.Stop()
+    //        iter <- iter + 1
+    //        if iter >= 100 then
+    //            let fps = float iter / sw.Elapsed.TotalSeconds
+    //            printfn "%.2f" fps
+    //            iter <- 0
+    //            sw.Reset()
+
+    //        target :> ITexture
+    //    )
+
+
+    let final = 
+        quad |> Sg.diffuseTexture (resultImage |> Mod.map (fun t -> t :> ITexture))
+             |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
+             |> Sg.compile runtime window.FramebufferSignature
+
+
+    let myRender =
+        RenderTask.custom (fun (t, rt, fbo) ->
+            task.Run t <| TraceCommand.TraceToTexture resultImage
+            final.Run(t, rt, fbo)
         )
 
-    window.Scene <-
-        quad |> Sg.diffuseTexture output
-             |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
+    window.RenderAsFastAsPossible <- true
+    window.RenderTask <- myRender
+        //quad |> Sg.diffuseTexture output
+        //     |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
 
-    window.Run(true)
+    window.Run()
 
     task.Dispose()
 

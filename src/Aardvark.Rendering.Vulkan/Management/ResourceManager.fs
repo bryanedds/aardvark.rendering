@@ -1187,12 +1187,23 @@ module Resources =
         override x.Compute (token : AdaptiveToken) =
             if input.GetValue token then 1 else 0
 
-    (*type InstanceBufferResource'(owner : IResourceCache, key : list<obj>,
-                                 device : Device, instances : list<IMod<VkGeometryInstance>>) =
+    type InstanceBufferResource(owner : IResourceCache, key : list<obj>, 
+                                 device : Device, input : IMod<VkGeometryInstance[]>) =
         inherit AbstractResourceLocation<InstanceBuffer>(owner, key)
 
         let mutable handle = None
         let mutable version = 0
+
+        let create instances =
+            handle <- Some (InstanceBuffer.create device instances)
+            inc &version
+
+        let update instances buffer =
+            let success = InstanceBuffer.tryUpdate instances buffer
+
+            if not success then
+                InstanceBuffer.delete buffer
+                create instances
 
         override x.Create() =
             ()
@@ -1202,27 +1213,15 @@ module Resources =
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then
-                let desc = getDesc token
+                let instances = input.GetValue token
 
-                handle |> Option.iter AccelerationStructure.delete
-                handle <- Some <| AccelerationStructure.create device desc
-                inc &version
+                match handle with
+                    | Some s -> update instances s
+                    | None -> create instances
 
                 { handle = handle.Value; version = version }
             else
-                { handle = handle.Value; version = version }*)
-
-    type InstanceBufferResource(owner : IResourceCache, key : list<obj>,
-                                device : Device, input : IMod<VkGeometryInstance list>) =
-        inherit MutableResourceLocation<VkGeometryInstance list, InstanceBuffer>(
-            owner, key, 
-            input,
-            {
-                mcreate     = fun instances -> InstanceBuffer.create device instances
-                mdestroy    = fun b -> InstanceBuffer.delete b
-                mtryUpdate  = fun b v -> InstanceBuffer.tryUpdate v b
-            }
-        )
+                { handle = handle.Value; version = version }
 
     type AccelerationStructureResource(owner : IResourceCache, key : list<obj>, 
                                        device : Device, resources : IResourceLocation list,
@@ -1604,7 +1603,7 @@ type ResourceManager(user : IResourceUser, device : Device) =
     member x.CreateIsActive(value : IMod<bool>) =
         isActiveCache.GetOrCreate([value :> obj], fun cache key -> IsActiveResource(cache, key, value))
 
-    member x.CreateInstanceBuffer(instances : IMod<VkGeometryInstance list>) =
+    member x.CreateInstanceBuffer(instances : IMod<VkGeometryInstance[]>) =
         let key = [ instances :> obj ]
         instanceBufferCache.GetOrCreate(
             key,

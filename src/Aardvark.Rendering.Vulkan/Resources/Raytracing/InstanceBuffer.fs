@@ -24,12 +24,12 @@ type uint24 =
 
 type VkGeometryInstance =
     struct
-        val public transform : M34f
-        val public instanceId : uint24
-        val public mask : uint8
-        val public instanceOffset : uint24
-        val public flags : uint8
-        val public accelerationStructureHandle : uint64
+        val mutable public transform : M34f
+        val mutable public instanceId : uint24
+        val mutable public mask : uint8
+        val mutable public instanceOffset : uint24
+        val mutable public flags : uint8
+        val mutable public accelerationStructureHandle : uint64
 
         new (transform : Trafo3d, instanceId : int, mask : uint8,
                 instanceOffset : int, flags : VkGeometryInstanceFlagsNV, blAS : uint64) =
@@ -57,12 +57,11 @@ type InstanceBuffer =
 module InstanceBuffer =
     open Microsoft.FSharp.NativeInterop
 
-    let tryUpdate (instances : VkGeometryInstance list) (buffer : InstanceBuffer) =
-        let data = instances |> List.toArray
-        let size = data.Length * sizeof<VkGeometryInstance>
+    let tryUpdate (instances : VkGeometryInstance[]) (buffer : InstanceBuffer) =
+        let size = instances.Length * sizeof<VkGeometryInstance>
 
-        if data.Length = buffer.Count then
-            pinned data (fun ptr ->
+        if instances.Length = buffer.Count then
+            pinned instances (fun ptr ->
                 buffer.Device.Runtime.Copy(ptr, buffer, 0n, nativeint size)
             )
             
@@ -70,9 +69,8 @@ module InstanceBuffer =
         else
             false
 
-    let create (device : Device) (instances : VkGeometryInstance list) =
-        let count = List.length instances
-        let size = count * sizeof<VkGeometryInstance>
+    let create (device : Device) (instances : VkGeometryInstance[]) =
+        let size = instances.Length * sizeof<VkGeometryInstance>
         let flags = VkBufferUsageFlags.RayTracingBitNv ||| VkBufferUsageFlags.TransferDstBit
 
         let info =
@@ -105,7 +103,7 @@ module InstanceBuffer =
         VkRaw.vkBindBufferMemory(device.Handle, handle, ptr.Memory.Handle, uint64 ptr.Offset)
             |> check "could not bind buffer-memory"
 
-        let buffer = new InstanceBuffer(device, handle, ptr, count, flags)
+        let buffer = new InstanceBuffer(device, handle, ptr, instances.Length, flags)
         buffer |> tryUpdate instances |> ignore
         
         buffer
