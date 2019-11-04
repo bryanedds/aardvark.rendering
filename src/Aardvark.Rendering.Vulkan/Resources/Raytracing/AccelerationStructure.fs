@@ -85,7 +85,7 @@ module private AccelerationStructureInfo =
 
     let create (pGeometries : nativeptr<VkGeometryNV>) (geometryCount : int) (instanceCount : int) =
         let kind =
-            if instanceCount > 0 then
+            if geometryCount = 0 then
                 VkAccelerationStructureTypeNV.VkAccelerationStructureTypeTopLevelNv
             else
                 VkAccelerationStructureTypeNV.VkAccelerationStructureTypeBottomLevelNv

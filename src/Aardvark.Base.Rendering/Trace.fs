@@ -11,10 +11,13 @@ type MyBuffer = {
     format : Type
 }
 
+/// Geometry for raytracing can be either (indexed) triangles or
+/// axis-aligned bounding boxes
 type TraceGeometry =
     | Triangles of vertexBuffer: MyBuffer * indexBuffer : option<MyBuffer>
     | AABBs of buffer : IBuffer<Box3f>
 
+/// Geometries prepared in an acceleration structure
 type IAccelerationStructure =
     abstract member Handle : obj
     abstract member Geometries : list<TraceGeometry>
@@ -25,24 +28,57 @@ type IAccelerationStructureRuntime =
     abstract member CreateAccelerationStructure : list<TraceGeometry> -> IAccelerationStructure
     abstract member DeleteAccelerationStructure : IAccelerationStructure -> unit
 
-type TraceObject = {
-    transform           : IMod<Trafo3d>
-    closestHitShader    : option<byte[]>
-    anyHitShader        : option<byte[]>
-    intersectionShader  : option<byte[]>
-    geometry            : IAccelerationStructure
-    userData            : SymbolDict<obj>           // TODO: Adaptive
-}
+/// An object contained in raytracing scenes
+type TraceObject(transform, anyHitShader, closestHitShader, 
+                 intersectionShader, geometry, userData) =
 
-type TraceScene = {
-    raygenShader    : byte[]
-    missShaders     : list<byte[]>
-    callableShaders : list<byte[]>
-    objects         : list<TraceObject>
-    globals         : SymbolDict<IMod>
-    buffers         : SymbolDict<IMod<IBackendBuffer>>
-    textures        : SymbolDict<IMod<ITexture>>
-}
+    /// The current transformation of the object
+    member x.Transform : IMod<Trafo3d> = transform
+
+    /// The any hit shader is called on the first hit
+    /// that is encountered (not necessarily the closest)
+    member x.AnyHitShader : byte[] option = anyHitShader
+
+    /// The closest hit shader is called for the closest
+    /// ray-object intersection
+    member x.ClosestHitShader : byte[] option = closestHitShader
+
+    /// The intersection shader allows the user to provide logic
+    /// for the ray-object intersection (e.g. for a parametric sphere)
+    member x.IntersectionShader : byte[] option = intersectionShader
+
+    /// The actual geometry of the object compiled to an acceleration
+    /// structure
+    member x.Geometry : IAccelerationStructure = geometry
+
+    /// User data to be accessible in the shaders
+    /// TODO: Adaptive
+    member x.UserData : SymbolDict<obj> = userData
+
+/// Object describing a scene to be raytraced
+type TraceScene(raygenShader, missShaders, callableShaders, objects, globals, buffers, textures) =
+
+    /// Describes how initial rays are generated
+    member x.RaygenShader : byte[] = raygenShader
+
+    /// Describes what happens when a ray does not intersect with
+    /// any object in the scene (e.g. return constant color)
+    member x.MissShaders : list<byte[]> = missShaders
+
+    /// Shaders that can be invoked from other shaders
+    member x.CallableShaders : list<byte[]> = callableShaders
+    
+    /// Objects in the scene
+    member x.Objects : TraceObject list = objects
+
+    /// Global uniforms
+    member x.Globals : SymbolDict<IMod> = globals
+
+    /// Global buffers
+    member x.Buffers : SymbolDict<IMod<IBackendBuffer>> = buffers
+
+    /// Global textures
+    member x.Textures : SymbolDict<IMod<ITexture>> = textures
 
 [<RequireQualifiedAccess>]
 type TraceCommand =

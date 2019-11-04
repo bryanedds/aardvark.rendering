@@ -18,7 +18,7 @@ module ShaderGroup =
         | _ -> false
 
     let ofTraceObject (obj : TraceObject) =
-        HitGroup (obj.anyHitShader, obj.closestHitShader, obj.intersectionShader)
+        HitGroup (obj.AnyHitShader, obj.ClosestHitShader, obj.IntersectionShader)
 
     let mapWithStage (f : ShaderStage -> 'a -> 'b) = function
         | Raygen x              -> Raygen (f ShaderStage.Raygen x)

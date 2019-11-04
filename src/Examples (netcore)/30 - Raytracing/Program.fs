@@ -87,7 +87,7 @@ let main argv =
 
     let objects = 
         let totalCount = 5000
-        let dynamicCount = 0//totalCount / 2
+        let dynamicCount = totalCount / 2
 
         let rand = RandomSystem()
 
@@ -130,14 +130,7 @@ let main argv =
             )
 
         trafos |> List.map (fun trafo ->
-            {
-                transform = trafo
-                closestHitShader = Some chitShader
-                anyHitShader = None
-                intersectionShader = None
-                geometry = cubeAS
-                userData = SymDict.empty
-            }
+            TraceObject(trafo, None, Some chitShader, None, cubeAS, SymDict.empty)
         )
 
     (*let dynamicRotation speed =
@@ -199,23 +192,24 @@ let main argv =
         frustum |> Mod.map (Frustum.projTrafo >> invTrans)
 
     let bounces, tmin, tmax =
-        ~~0u, ~~0.0f, ~~100.0f
+        ~~0u, ~~0.0f, ~~500.0f
 
-    let scene : TraceScene = {
-        raygenShader = raygenShader
-        missShaders = [missShader]
-        callableShaders = []
-        objects = objects
-        globals = SymDict.ofList [
-            Symbol.Create "viewInverse@", viewInv :> IMod
-            Symbol.Create "projInverse@", projInv :> IMod
-            Symbol.Create "maxBounces@", bounces :> IMod
-            Symbol.Create "tmin@", tmin :> IMod
-            Symbol.Create "tmax@", tmax :> IMod
-        ]
-        buffers = SymDict.empty
-        textures = SymDict.ofList [Symbol.Create "resultImage", resultImage |> Mod.map unbox]
-    }
+    let scene : TraceScene =
+        TraceScene(
+            raygenShader, [missShader], [],
+            objects,
+            SymDict.ofList [
+                Symbol.Create "viewInverse@", viewInv :> IMod
+                Symbol.Create "projInverse@", projInv :> IMod
+                Symbol.Create "maxBounces@", bounces :> IMod
+                Symbol.Create "tmin@", tmin :> IMod
+                Symbol.Create "tmax@", tmax :> IMod                
+            ],
+            SymDict.empty,
+            SymDict.ofList [
+                Symbol.Create "resultImage", resultImage |> Mod.map unbox
+            ]
+        )
 
     let task = runtime.CompileTrace scene
 

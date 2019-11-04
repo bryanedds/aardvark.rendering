@@ -56,37 +56,37 @@ module ShaderPool =
         let cache = Dict.empty
 
         cache.[ShaderStage.Raygen] <-
-            [scene.raygenShader] |> createCache ShaderStage.Raygen
+            [scene.RaygenShader] |> createCache ShaderStage.Raygen
 
         cache.[ShaderStage.Miss] <-
-            scene.missShaders |> createCache ShaderStage.Miss
+            scene.MissShaders |> createCache ShaderStage.Miss
 
         cache.[ShaderStage.Callable] <-
-            scene.callableShaders |> createCache ShaderStage.Callable
+            scene.CallableShaders |> createCache ShaderStage.Callable
 
         cache.[ShaderStage.AnyHit] <-
-            scene.objects |> List.choose (fun o -> o.anyHitShader)
+            scene.Objects |> List.choose (fun o -> o.AnyHitShader)
                           |> createCache ShaderStage.AnyHit
                           
         cache.[ShaderStage.ClosestHit] <-
-            scene.objects |> List.choose (fun o -> o.closestHitShader)
+            scene.Objects |> List.choose (fun o -> o.ClosestHitShader)
                           |> createCache ShaderStage.ClosestHit
                           
         cache.[ShaderStage.Intersection] <-
-            scene.objects |> List.choose (fun o -> o.intersectionShader)
+            scene.Objects |> List.choose (fun o -> o.IntersectionShader)
                           |> createCache ShaderStage.Intersection        
 
         // Remove duplicate hit groups
         let hitGroups =
-            scene.objects |> List.map ShaderGroup.ofTraceObject
+            scene.Objects |> List.map ShaderGroup.ofTraceObject
                           |> List.distinct
 
         // Create shader groups
         let shaderGroups =
             [
-                scene.raygenShader |> (Raygen >> List.singleton)
-                scene.missShaders |> List.map Miss
-                scene.callableShaders |> List.map Callable
+                scene.RaygenShader |> (Raygen >> List.singleton)
+                scene.MissShaders |> List.map Miss
+                scene.CallableShaders |> List.map Callable
                 hitGroups
             ] 
             |> List.concat

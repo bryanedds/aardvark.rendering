@@ -94,7 +94,7 @@ module TracePipelineDescription =
 module TracePipeline =
 
     let create (device : Device) (desc : TracePipelineDescription) =
-    
+        
         let handle =
             native {
                 let! pName = "main"
@@ -125,7 +125,8 @@ module TracePipeline =
                         VkPipelineCreateFlags.None,
                         uint32 desc.stages.Length, pStages, 
                         uint32 desc.groups.Length, pGroups,
-                        desc.maxRecursionDepth, desc.layout.Handle,
+                        min (RaytracingProperties.maxRecursionDepth device) desc.maxRecursionDepth,
+                        desc.layout.Handle,
                         VkPipeline.Null, 0
                     )
 

@@ -108,26 +108,6 @@ module ShaderBindingTable =
     open System.Runtime.InteropServices
     open Aardvark.Base.Prelude.NativePtr.Operators
 
-    let private getHandleSize (device : Device) =
-        native {
-            let! pRayTracingProperties =
-                VkPhysicalDeviceRayTracingPropertiesNV(
-                    VkStructureType.PhysicalDeviceRayTracingPropertiesNv, 0n,
-                    0u, 0u, 0u, 0u, 0UL, 0UL, 0UL, 0u
-                )
-
-            let! pProperties =
-                VkPhysicalDeviceProperties2(
-                    VkStructureType.PhysicalDeviceProperties2, NativePtr.toNativeInt pRayTracingProperties,
-                    VkPhysicalDeviceProperties()
-                )
-
-            VkRaw.vkGetPhysicalDeviceProperties2(device.PhysicalDevice.Handle, pProperties)
-            let pNext = NativePtr.ofNativeInt<VkPhysicalDeviceRayTracingPropertiesNV> (!!pProperties).pNext
-
-            return (!!pNext).shaderGroupHandleSize
-        }
-
     // Returns the size of an entry (consists of a program id + inline data)
     // Every entry of a given type must be the same size and aligned to 16 bytes
     let private getEntrySize (handleSize : uint32) (entries : ShaderBindingTableEntry list) =
@@ -216,7 +196,7 @@ module ShaderBindingTable =
 
     let create (device : Device) (pipeline : VkPipeline) (entries : ShaderBindingTableEntries) =
 
-        let handleSize = getHandleSize device
+        let handleSize = RaytracingProperties.shaderGroupHandleSize device
         let totalSize = getTotalSize handleSize entries
         let flags = VkBufferUsageFlags.RayTracingBitNv ||| VkBufferUsageFlags.TransferDstBit
 

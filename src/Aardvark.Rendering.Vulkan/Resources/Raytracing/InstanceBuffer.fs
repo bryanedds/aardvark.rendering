@@ -62,7 +62,8 @@ module InstanceBuffer =
 
         if instances.Length = buffer.Count then
             pinned instances (fun ptr ->
-                buffer.Device.Runtime.Copy(ptr, buffer, 0n, nativeint size)
+                if instances.Length > 0 then
+                    buffer.Device.Runtime.Copy(ptr, buffer, 0n, nativeint size)
             )
             
             true

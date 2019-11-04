@@ -160,17 +160,17 @@ type DevicePreparedRenderObjectExtensions private() =
         // Top-level acceleration structure
         let instances =
             let buffer =
-                scene.objects |> List.mapi (fun i o ->
+                scene.Objects |> List.mapi (fun i o ->
                     VkGeometryInstance(
                         Trafo3d.Identity, i, 0xffuy, shaderPool |> ShaderPool.getHitGroupIndex o,
                         VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
-                        unbox o.geometry.Handle
+                        unbox o.Geometry.Handle
                     )
                 ) |> Array.ofList
 
             Mod.custom (fun token ->
-                scene.objects |> List.iteri(fun i o ->
-                    let trafo = o.transform.GetValue(token)
+                scene.Objects |> List.iteri(fun i o ->
+                    let trafo = o.Transform.GetValue(token)
                     buffer.[i].transform <- M34f.op_Explicit trafo.Forward
                 )
 
@@ -189,14 +189,14 @@ type DevicePreparedRenderObjectExtensions private() =
                 descriptorSetLayout.Bindings |> Array.map (fun b ->
                     match b.Parameter with
                         | ImageParameter img ->
-                            let texture = scene.textures.[Symbol.Create img.imageName]
+                            let texture = scene.Textures.[Symbol.Create img.imageName]
                             let image = this.CreateImage(texture) 
                             let view = this.CreateImageView(img.imageType, image)
 
                             Resources.AdaptiveStorageImage(img.imageBinding, view)
 
                         | UniformBlockParameter layout ->
-                            let buffer = this.CreateUniformBuffer(layout, scene.globals)
+                            let buffer = this.CreateUniformBuffer(layout, scene.Globals)
                             resources.Add(buffer)
 
                             Resources.AdaptiveUniformBuffer(layout.ubBinding, buffer)
