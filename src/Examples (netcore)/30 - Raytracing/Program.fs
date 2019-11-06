@@ -31,7 +31,7 @@ let main argv =
     Aardvark.Init()
 
     let app = new Aardvark.Application.Slim.VulkanApplication()
-    let window = app.CreateGameWindow(1)
+    let window = app.CreateGameWindow(1, false)
 
     //use window = 
     //    window {
@@ -85,21 +85,15 @@ let main argv =
     let sphereAS =
         runtime.CreateAccelerationStructure([TraceGeometry.AABBs sphereBuffer])
 
-    let objects = 
-        let totalCount = 5000
-        let dynamicCount = totalCount / 2
-
+    let createObject =
         let rand = RandomSystem()
+        
+        let time =
+            let startTime = DateTime.Now
+            window.Time |> Mod.map (fun t -> (t - startTime).TotalSeconds)
 
-        let time i =
-            if i < dynamicCount then
-                let startTime = DateTime.Now
-                window.Time |> Mod.map (fun t -> (t - startTime).TotalSeconds)
-            else
-                Mod.constant 0.0
-
-        let pos = [
-            for _ in 0 .. totalCount - 1 do
+        fun () ->
+            let axis, turnRate, moveSpeed, initialTrafo =
                 let r = rand.UniformDouble() * 25.0 + 10.0
                 let phi = rand.UniformDouble() * Constant.PiTimesTwo
 
@@ -107,31 +101,24 @@ let main argv =
                     let r = rand.UniformV3dDirection() 
                     let angle = rand.UniformDouble() * Constant.PiTimesTwo
                     Trafo3d.Rotation(r, angle)
-                        
-                let randomAxis = rand.UniformV3dDirection() 
-                let randomTurnrate = rand.UniformDouble() * 2.0
-                let randomMovespeed = (rand.UniformDouble() - 0.5) * 0.4 + 1.0
 
                 let p = V3d(r * cos phi, r * sin phi, 0.0)
-                yield randomAxis, randomTurnrate, randomMovespeed, rot * Trafo3d.Translation(p)
-        ]
 
-        let trafos =
-            pos |> List.mapi (fun i (randomAxis, randomTurnrate, randomMovespeed, trafo) ->
-                time i |> Mod.map (fun mt ->
-                    let rot = Trafo3d.Rotation(randomAxis,randomTurnrate * mt * 1.5)
+                rand.UniformV3dDirection(),
+                rand.UniformDouble() * 2.0,
+                (rand.UniformDouble() - 0.5) * 0.4 + 1.0,
+                rot * Trafo3d.Translation(p)
 
-                    let trans = 
-                        trafo * 
-                        Trafo3d.RotationZ (randomMovespeed * 0.25 * mt)
-
+            let trafo =
+                time |> Mod.map (fun mt ->
+                    let rot = Trafo3d.Rotation(axis, turnRate * mt * 1.5)
+                    let trans = initialTrafo * Trafo3d.RotationZ (moveSpeed * 0.25 * mt)
                     rot * trans
                 )
-            )
 
-        trafos |> List.map (fun trafo ->
             TraceObject(trafo, None, Some chitShader, None, cubeAS, SymDict.empty)
-        )
+
+    let objects = Mod.init (HRefSet.single (createObject()))
 
     (*let dynamicRotation speed =
         let startTime = System.DateTime.Now
@@ -197,7 +184,7 @@ let main argv =
     let scene : TraceScene =
         TraceScene(
             raygenShader, [missShader], [],
-            objects,
+            objects |> ASet.ofMod,
             SymDict.ofList [
                 Symbol.Create "viewInverse@", viewInv :> IMod
                 Symbol.Create "projInverse@", projInv :> IMod
@@ -213,25 +200,6 @@ let main argv =
 
     let task = runtime.CompileTrace scene
 
-    let sw = System.Diagnostics.Stopwatch()
-    let mutable iter = 0
-    //let output =
-    //    Mod.custom (fun self ->
-    //        let target = resultImage.GetValue self
-    //        sw.Start()
-    //        task.Run self <| TraceCommand.TraceToTexture resultImage
-    //        sw.Stop()
-    //        iter <- iter + 1
-    //        if iter >= 100 then
-    //            let fps = float iter / sw.Elapsed.TotalSeconds
-    //            printfn "%.2f" fps
-    //            iter <- 0
-    //            sw.Reset()
-
-    //        target :> ITexture
-    //    )
-
-
     let final = 
         quad |> Sg.diffuseTexture (resultImage |> Mod.map (fun t -> t :> ITexture))
              |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
@@ -246,8 +214,24 @@ let main argv =
 
     window.RenderAsFastAsPossible <- true
     window.RenderTask <- myRender
-        //quad |> Sg.diffuseTexture output
-        //     |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
+
+    window.Keyboard.DownWithRepeats.Values.Add(fun k ->
+        match k with
+            | Keys.Enter ->
+                transact (fun () ->
+                    let set = Mod.force objects
+                    Mod.change objects (set |> HRefSet.add (createObject()))
+                )
+            | Keys.Delete ->
+                transact (fun () ->
+                    let set = Mod.force objects
+
+                    if set.Count > 0 then
+                        let x = set.Count / 2 |> Array.get (HRefSet.toArray set)
+                        Mod.change objects (set |> HRefSet.remove x)
+                )
+            | _ -> ()
+    )
 
     window.Run()
 

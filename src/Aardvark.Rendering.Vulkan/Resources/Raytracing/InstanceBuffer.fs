@@ -6,51 +6,20 @@ open Aardvark.Base
 open Aardvark.Rendering.Vulkan
 open Aardvark.Rendering.Vulkan.NVRayTracing
 
-open System.Runtime.InteropServices
-
-[<StructLayout(LayoutKind.Explicit, Size = 3)>]
-type uint24 =
-    struct
-        [<FieldOffset(0)>]
-        val mutable public B0 : uint8
-        [<FieldOffset(1)>]
-        val mutable public B1 : uint8
-        [<FieldOffset(2)>]
-        val mutable public B2 : uint8
-
-        member x.Value = uint32 (x.B0) ||| uint32(x.B1 <<< 8) ||| uint32 (x.B2 <<< 16)
-        new(v : uint32) = { B0 = byte (v &&& 0xFFu); B1 = byte ((v >>> 8) &&& 0xFFu); B2= byte ((v >>> 16) &&& 0xFFu)}
-    end
-
-type VkGeometryInstance =
-    struct
-        val mutable public transform : M34f
-        val mutable public instanceId : uint24
-        val mutable public mask : uint8
-        val mutable public instanceOffset : uint24
-        val mutable public flags : uint8
-        val mutable public accelerationStructureHandle : uint64
-
-        new (transform : Trafo3d, instanceId : int, mask : uint8,
-                instanceOffset : int, flags : VkGeometryInstanceFlagsNV, blAS : uint64) =
-            {
-                transform = M34f.op_Explicit transform.Forward
-                instanceId = uint24 <| uint32 instanceId
-                mask = mask
-                instanceOffset = uint24 <| uint32 instanceOffset
-                flags = uint8 flags
-                accelerationStructureHandle = blAS
-            }
-    end
-
 type InstanceBuffer =
     class
         inherit Buffer
+
+        /// The current number of instances in the buffer
         val mutable public Count : int
+
+        /// The capacity (i.e. maximum number of instances) of the buffer
+        val mutable public Capacity : int
 
         new(device : Device, handle : VkBuffer, ptr : DevicePtr, count : int, flags : VkBufferUsageFlags) =
             { inherit Buffer(device, handle, ptr, int64 (count * sizeof<VkGeometryInstance>), flags)
-              Count = count }
+              Count = count 
+              Capacity = count }
     end
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -60,12 +29,15 @@ module InstanceBuffer =
     let tryUpdate (instances : VkGeometryInstance[]) (buffer : InstanceBuffer) =
         let size = instances.Length * sizeof<VkGeometryInstance>
 
-        if instances.Length = buffer.Count then
-            pinned instances (fun ptr ->
-                if instances.Length > 0 then
+        if instances.Length = buffer.Capacity then
+
+            if instances.Length > 0 then
+                pinned instances (fun ptr ->
                     buffer.Device.Runtime.Copy(ptr, buffer, 0n, nativeint size)
-            )
-            
+                )
+
+            buffer.Count <- instances.Length
+             
             true
         else
             false

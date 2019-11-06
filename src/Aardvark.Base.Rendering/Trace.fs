@@ -69,7 +69,7 @@ type TraceScene(raygenShader, missShaders, callableShaders, objects, globals, bu
     member x.CallableShaders : list<byte[]> = callableShaders
     
     /// Objects in the scene
-    member x.Objects : TraceObject list = objects
+    member x.Objects : TraceObject aset = objects
 
     /// Global uniforms
     member x.Globals : SymbolDict<IMod> = globals

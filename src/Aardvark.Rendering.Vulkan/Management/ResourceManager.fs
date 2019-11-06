@@ -1188,7 +1188,7 @@ module Resources =
             if input.GetValue token then 1 else 0
 
     type InstanceBufferResource(owner : IResourceCache, key : list<obj>, 
-                                 device : Device, input : IMod<VkGeometryInstance[]>) =
+                                 device : Device, input : InstanceArray) =
         inherit AbstractResourceLocation<InstanceBuffer>(owner, key)
 
         let mutable handle = None
@@ -1213,7 +1213,7 @@ module Resources =
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then
-                let instances = input.GetValue token
+                let instances = input.Update token
 
                 match handle with
                     | Some s -> update instances s
@@ -1603,7 +1603,7 @@ type ResourceManager(user : IResourceUser, device : Device) =
     member x.CreateIsActive(value : IMod<bool>) =
         isActiveCache.GetOrCreate([value :> obj], fun cache key -> IsActiveResource(cache, key, value))
 
-    member x.CreateInstanceBuffer(instances : IMod<VkGeometryInstance[]>) =
+    member x.CreateInstanceBuffer(instances : InstanceArray) =
         let key = [ instances :> obj ]
         instanceBufferCache.GetOrCreate(
             key,
@@ -1613,7 +1613,10 @@ type ResourceManager(user : IResourceUser, device : Device) =
 
     member x.CreateAccelerationStructure(instanceBuffer : IResourceLocation<InstanceBuffer>) =
         let getDesc (token : AdaptiveToken) =
-            { instanceBuffer = (instanceBuffer.Update token).handle }
+            let buffer = (instanceBuffer.Update token).handle
+
+            { instances = buffer.Handle
+              instanceCount = buffer.Count }
                 |> TopLevel
 
         let key = [ instanceBuffer :> obj ]

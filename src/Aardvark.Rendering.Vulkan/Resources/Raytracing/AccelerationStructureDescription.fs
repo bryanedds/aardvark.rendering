@@ -1,13 +1,15 @@
 ﻿namespace Aardvark.Rendering.Vulkan.Raytracing
 
 open Aardvark.Base
+open Aardvark.Rendering.Vulkan
 
 type BottomLevelDescription = {
     geometries : TraceGeometry list
 }
 
 type TopLevelDescription = {
-    instanceBuffer : InstanceBuffer
+    instances : VkBuffer
+    instanceCount : int
 }
 
 type AccelerationStructureDescription =
@@ -42,5 +44,6 @@ module BottomLevelDescription =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TopLevelDescription =
 
-    let create buffer =
-        { instanceBuffer = buffer }
+    let create (buffer : InstanceBuffer) =
+        { instances = buffer.Handle
+          instanceCount = buffer.Count }

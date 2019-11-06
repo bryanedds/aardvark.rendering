@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.Rendering.Vulkan.Raytracing
 
 open Aardvark.Base
+open Aardvark.Base.Incremental
 open Aardvark.Rendering.Vulkan
 
 // The shader pool contains all the shaders included in the scene
@@ -65,20 +66,20 @@ module ShaderPool =
             scene.CallableShaders |> createCache ShaderStage.Callable
 
         cache.[ShaderStage.AnyHit] <-
-            scene.Objects |> List.choose (fun o -> o.AnyHitShader)
+            scene.Objects |> ASet.toList |> List.choose (fun o -> o.AnyHitShader)
                           |> createCache ShaderStage.AnyHit
                           
         cache.[ShaderStage.ClosestHit] <-
-            scene.Objects |> List.choose (fun o -> o.ClosestHitShader)
+            scene.Objects |> ASet.toList |> List.choose (fun o -> o.ClosestHitShader)
                           |> createCache ShaderStage.ClosestHit
                           
         cache.[ShaderStage.Intersection] <-
-            scene.Objects |> List.choose (fun o -> o.IntersectionShader)
+            scene.Objects |> ASet.toList |> List.choose (fun o -> o.IntersectionShader)
                           |> createCache ShaderStage.Intersection        
 
         // Remove duplicate hit groups
         let hitGroups =
-            scene.Objects |> List.map ShaderGroup.ofTraceObject
+            scene.Objects |> ASet.toList |> List.map ShaderGroup.ofTraceObject
                           |> List.distinct
 
         // Create shader groups

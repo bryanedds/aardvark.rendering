@@ -157,26 +157,18 @@ type DevicePreparedRenderObjectExtensions private() =
 
         let shaderPool = ShaderPool.create this.Device scene
 
-        // Top-level acceleration structure
-        let instances =
-            let buffer =
-                scene.Objects |> List.mapi (fun i o ->
-                    VkGeometryInstance(
-                        Trafo3d.Identity, i, 0xffuy, shaderPool |> ShaderPool.getHitGroupIndex o,
-                        VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
-                        unbox o.Geometry.Handle
-                    )
-                ) |> Array.ofList
+        // TODO: Handle IDs
+        let compileObject (token : AdaptiveToken) (obj : TraceObject) =
+            let trafo = obj.Transform.GetValue token
 
-            Mod.custom (fun token ->
-                scene.Objects |> List.iteri(fun i o ->
-                    let trafo = o.Transform.GetValue(token)
-                    buffer.[i].transform <- M34f.op_Explicit trafo.Forward
-                )
-
-                buffer
+            VkGeometryInstance(
+                trafo, 0, 0xffuy, shaderPool |> ShaderPool.getHitGroupIndex obj,
+                VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
+                unbox obj.Geometry.Handle
             )
 
+        // Top-level acceleration structure
+        let instances = new InstanceArray(scene.Objects, compileObject)
         let instanceBuffer = this.CreateInstanceBuffer(instances)
         let tlAS = this.CreateAccelerationStructure(instanceBuffer)
 

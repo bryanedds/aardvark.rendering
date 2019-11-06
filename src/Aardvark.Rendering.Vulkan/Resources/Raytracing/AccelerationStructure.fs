@@ -152,7 +152,7 @@ module private AccelerationStructureInfo =
         create ptr desc.geometries.Length 0
 
     let allocTopLevel (desc : TopLevelDescription) =
-        create NativePtr.zero 0 desc.instanceBuffer.Count
+        create NativePtr.zero 0 desc.instanceCount
 
     let alloc = function
         | TopLevel desc -> allocTopLevel desc
@@ -192,10 +192,8 @@ module AccelerationStructure =
         get VkAccelerationStructureMemoryRequirementsTypeNV.VkAccelerationStructureMemoryRequirementsTypeObjectNv,
         if build.size > update.size then build else update
 
-    let private allocateResultMemory (requirements : VkMemoryRequirements) (s : AccelerationStructure) =
+    let private bindResultMemory (s : AccelerationStructure) =
         native {
-            s.Memory <- s.Device.Alloc(requirements, true)
-                
             let! pInfo =
                 VkBindAccelerationStructureMemoryInfoNV(
                     VkStructureType.BindAccelerationStructureMemoryInfoNv, 0n,
@@ -205,6 +203,10 @@ module AccelerationStructure =
             VkRaw.vkBindAccelerationStructureMemoryNV(s.Device.Handle, 1u, pInfo)
                 |> check "failed to bind acceleration structure memory"
         }
+
+    let private allocateResultMemory (requirements : VkMemoryRequirements) (s : AccelerationStructure) =
+        s.Memory <- s.Device.Alloc(requirements, true)
+        bindResultMemory s
         s
 
     let private allocateScratchBuffer (requirements : VkMemoryRequirements) (s : AccelerationStructure) =
@@ -243,7 +245,7 @@ module AccelerationStructure =
     let private build (info : AccelerationStructureInfo) (updateOnly : bool) (s : AccelerationStructure) =
         let instanceBuffer =
             match s.Description with
-                | TopLevel desc -> desc.instanceBuffer.Handle
+                | TopLevel desc -> desc.instances
                 | _ -> VkBuffer.Null
 
         // For updates we use the current handle as source and
@@ -319,6 +321,13 @@ module AccelerationStructure =
             return !!pHandle
         }
 
+    let private updateHandle (info : AccelerationStructureInfo) (s : AccelerationStructure) =
+        assert s.Handle.IsValid
+
+        VkRaw.vkDestroyAccelerationStructureNV(s.Device.Handle, s.Handle, NativePtr.zero)
+        s.Handle <- createHandle s.Device info
+        bindResultMemory s
+
     let create (device : Device) (desc : AccelerationStructureDescription) =
         let info = AccelerationStructureInfo.alloc desc
         let handle = createHandle device info
@@ -346,26 +355,35 @@ module AccelerationStructure =
 
     let tryUpdate (desc : AccelerationStructureDescription) (s : AccelerationStructure) =
 
-        let isReuseable =
+        let isReuseable, recreateHandle =
             match desc, s.Description with
                 | TopLevel dst, TopLevel src ->
                     // If we have fewer or the same number of instances we can
                     // reuse the acceleration structure
-                    dst.instanceBuffer.Count <= src.instanceBuffer.Count
+                    dst.instanceCount <= src.instanceCount,
+                    dst.instanceCount <> src.instanceCount
 
-                | BottomLevel _, TopLevel _ ->
+                | BottomLevel _, BottomLevel _ ->
                     // The Vulkan spec is very cryptic on when a bottom level acceleration
                     // data structure can be reused for an update. For now we just force a full
                     // rebuild.
-                    false
+                    false, false
 
                 | _ ->
-                    false
+                    false, false
         
         if isReuseable then
             let info = AccelerationStructureInfo.alloc desc
+
+            // Even though the memory requirements may be compatible, we may have to
+            // recreate the handle since the VkAccelerationStructureInfoNV struct
+            // changed
+            if recreateHandle then
+                updateHandle info s
+
             s |> build info true
             AccelerationStructureInfo.free info
+            s.Description <- desc
 
             true
         else
