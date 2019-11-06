@@ -6,6 +6,21 @@ open Aardvark.Base.Incremental
 open System
 open System.Collections.Generic
 
+type private InstanceWriter (input : TraceObject, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
+    inherit AdaptiveObject()
+
+    member x.Write(token : AdaptiveToken, buffer : VkGeometryInstance[], index : int) =
+        x.EvaluateIfNeeded token () (fun token ->
+            let value = compile token input
+            buffer.[index] <- value
+        )
+
+    member x.WriteTrafo(token : AdaptiveToken, buffer : VkGeometryInstance[], index : int) =
+        x.EvaluateIfNeeded token () (fun token ->
+            let trafo = input.Transform.GetValue token
+            buffer.[index].Transform <- M34f.op_Explicit trafo.Forward
+        ) 
+
 /// Array that holds VkGeometryInstance structs that adaptively
 /// resizes and stays compact
 type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
@@ -22,9 +37,11 @@ type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceOb
     // Locations of individual instances in the CPU buffer
     let mapping : Dict<TraceObject, int> = Dict.empty
 
+    // Writers tracking the trace objects
+    let writers : Dict<TraceObject, InstanceWriter> = Dict.empty
+
     // Writes the given instance to an index
-    let write (index : int) (key : TraceObject) (value : VkGeometryInstance) =
-        data.[index] <- value
+    let setIndex (index : int) (key : TraceObject) =
         keys.[index] <- key
         mapping.[key] <- index
 
@@ -46,7 +63,8 @@ type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceOb
                 let oldIndex = newCount + i
                 let key = keys.[oldIndex]
 
-                write newIndex key data.[oldIndex]
+                data.[newIndex] <- data.[oldIndex]
+                setIndex newIndex key
 
         // Resize the buffers
         data <- data.Resized newCount
@@ -57,12 +75,18 @@ type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceOb
 
         // Remove elements
         for k in rems do
+            writers.Remove k |> ignore
             mapping.Remove k |> ignore
 
         // Add elements
         for k in adds do
-            let v = compile token k
-            write (free.Dequeue()) k v
+            let i = free.Dequeue()
+
+            let w = InstanceWriter(k, compile)
+            w.Write(token, data, i)
+            writers.[k] <- w
+
+            setIndex i k
 
         assert(free.IsEmpty())
 
@@ -81,10 +105,8 @@ type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceOb
 
                 applyDeltas token adds rems
 
-            for KeyValue(k, i) in mapping do
-                if k.Transform.OutOfDate then
-                    let trafo = k.Transform.GetValue token
-                    data.[i].Transform <- M34f.op_Explicit trafo.Forward
+            for KeyValue(obj, w) in writers do
+                w.WriteTrafo(token, data, mapping.[obj])
         
             data
         )

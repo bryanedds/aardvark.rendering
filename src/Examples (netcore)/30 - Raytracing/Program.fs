@@ -92,7 +92,7 @@ let main argv =
             let startTime = DateTime.Now
             window.Time |> Mod.map (fun t -> (t - startTime).TotalSeconds)
 
-        fun () ->
+        fun dynamic ->
             let axis, turnRate, moveSpeed, initialTrafo =
                 let r = rand.UniformDouble() * 25.0 + 10.0
                 let phi = rand.UniformDouble() * Constant.PiTimesTwo
@@ -110,15 +110,16 @@ let main argv =
                 rot * Trafo3d.Translation(p)
 
             let trafo =
-                time |> Mod.map (fun mt ->
-                    let rot = Trafo3d.Rotation(axis, turnRate * mt * 1.5)
-                    let trans = initialTrafo * Trafo3d.RotationZ (moveSpeed * 0.25 * mt)
-                    rot * trans
-                )
+                if dynamic then time else (Mod.constant 0.0)
+                    |> Mod.map (fun mt ->
+                        let rot = Trafo3d.Rotation(axis, turnRate * mt * 1.5)
+                        let trans = initialTrafo * Trafo3d.RotationZ (moveSpeed * 0.25 * mt)
+                        rot * trans
+                    )
 
             TraceObject(trafo, None, Some chitShader, None, cubeAS, SymDict.empty)
 
-    let objects = Mod.init (HRefSet.single (createObject()))
+    let objects = Mod.init (HRefSet.single (createObject true))
 
     (*let dynamicRotation speed =
         let startTime = System.DateTime.Now
@@ -220,7 +221,7 @@ let main argv =
             | Keys.Enter ->
                 transact (fun () ->
                     let set = Mod.force objects
-                    Mod.change objects (set |> HRefSet.add (createObject()))
+                    Mod.change objects (set |> HRefSet.add (createObject (System.Random().NextDouble() > 0.5)))
                 )
             | Keys.Delete ->
                 transact (fun () ->
