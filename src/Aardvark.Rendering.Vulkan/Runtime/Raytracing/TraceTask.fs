@@ -216,13 +216,15 @@ type TraceTask(device : Device, scene : TraceScene) =
     member x.Run (token : AdaptiveToken) (commands : List<TraceCommand>) =
         x.EvaluateAlways token (fun t ->
             resources.Update t |> ignore
-            
-            let pipeline = preparedScene.pipeline
-            let pipelineLayout = pipeline.Description.layout
-            let descriptorSet = preparedScene.descriptorSet.Update t
-            let sbt = preparedScene.shaderBindingTable
 
-            device.perform {
+            let descriptorSet = preparedScene.descriptorSet.Update t
+
+            let pipeline = (preparedScene.pipeline.Update token).handle
+            let pipelineLayout = preparedScene.pipelineLayout
+
+            let sbt = (preparedScene.shaderBindingTable.Update token).handle
+
+            device.eventually {
                 do! Command.BindPipeline pipeline.Handle
                 do! Command.BindDescriptorSet(descriptorSet.handle.Handle, pipelineLayout.Handle)
 

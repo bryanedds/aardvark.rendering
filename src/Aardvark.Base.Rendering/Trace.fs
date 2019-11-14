@@ -96,9 +96,9 @@ type TraceCommand =
     static member Trace(size : IMod<V3i>) =
         TraceCommand.TraceCmd size
 
-    static member TraceToTexture(texture : IMod<IBackendTexture>) = [
+    static member TraceToTexture(texture : IMod<IBackendTexture>, size : IMod<V3i>) = [
         TraceCommand.TransformLayout(texture, TextureLayout.General)
-        TraceCommand.Trace(texture |> Mod.map (fun t -> t.Size))
+        TraceCommand.Trace(size)
         TraceCommand.TransformLayout(texture, TextureLayout.ShaderRead)
     ]
 

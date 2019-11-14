@@ -125,21 +125,17 @@ type PreparedTraceScene =
         original    : TraceScene
         resources   : IResourceLocation list
 
-        pipeline            : TracePipeline
+        pipeline            : IResourceLocation<TracePipeline>
+        pipelineLayout      : PipelineLayout
         descriptorSet       : IResourceLocation<DescriptorSet>
         descriptorSetLayout : DescriptorSetLayout
-        shaderPool          : ShaderPool<byte[], ShaderModule>
-        shaderBindingTable  : ShaderBindingTable
+        shaderBindingTable  : IResourceLocation<ShaderBindingTable>
     }
 
     member x.Dispose() =
         for r in x.resources do r.Release()
-
-        ShaderBindingTable.delete x.shaderBindingTable
-        PipelineLayout.delete x.pipeline.Description.layout x.device
-        TracePipeline.delete x.pipeline
+        PipelineLayout.delete x.pipelineLayout x.device
         DescriptorSetLayout.delete x.descriptorSetLayout x.device
-        ShaderPool.delete x.device x.shaderPool
 
     member x.Update(caller : AdaptiveToken) =
         for r in x.resources do r.Update(caller) |> ignore
@@ -155,21 +151,11 @@ type DevicePreparedRenderObjectExtensions private() =
 
         let resources = System.Collections.Generic.List<IResourceLocation>()
 
-        let shaderPool = ShaderPool.create this.Device scene
-
-        // TODO: Handle IDs
-        let compileObject (token : AdaptiveToken) (obj : TraceObject) =
-            let trafo = obj.Transform.GetValue token
-
-            VkGeometryInstance(
-                trafo, 0, 0xffuy, shaderPool |> ShaderPool.getHitGroupIndex obj,
-                VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
-                unbox obj.Geometry.Handle
-            )
+        let shaderPool = this.CreateShaderPool(scene)
 
         // Top-level acceleration structure
-        let instances = new InstanceArray(scene.Objects, compileObject)
-        let instanceBuffer = this.CreateInstanceBuffer(instances)
+        // TODO: Handle IDs
+        let instanceBuffer = this.CreateInstanceBuffer(shaderPool, scene.Objects, fun _ -> 0)
         let tlAS = this.CreateAccelerationStructure(instanceBuffer)
 
         // Descriptor sets
@@ -205,15 +191,11 @@ type DevicePreparedRenderObjectExtensions private() =
         resources.Add(descriptorSetBindings)
 
         // Pipeline
-        let pipelineDescription =
-            TracePipelineDescription.create pipelineLayout 0u
-                |> ShaderPool.addToPipelineDescription shaderPool
-
-        let pipeline = TracePipeline.create this.Device pipelineDescription
+        let pipeline = this.CreateTracePipeline(pipelineLayout, 0u, shaderPool)
 
         // Shader binding table
-        let sbtEntries = TracePipeline.getShaderBindingTableEntries pipeline
-        let shaderBindingTable = ShaderBindingTable.create this.Device pipeline.Handle sbtEntries
+        let shaderBindingTable = this.CreateShaderBindingTable(pipeline)
+        resources.Add(shaderBindingTable)
 
         {
             device      = this.Device
@@ -221,9 +203,9 @@ type DevicePreparedRenderObjectExtensions private() =
             resources   = resources |> CSharpList.toList
 
             pipeline            = pipeline
+            pipelineLayout      = pipelineLayout
             descriptorSet       = descriptorSet
             descriptorSetLayout = descriptorSetLayout
-            shaderPool          = shaderPool
             shaderBindingTable  = shaderBindingTable
         }
 

@@ -92,7 +92,7 @@ let main argv =
             let startTime = DateTime.Now
             window.Time |> Mod.map (fun t -> (t - startTime).TotalSeconds)
 
-        fun dynamic ->
+        fun dynamic cube ->
             let axis, turnRate, moveSpeed, initialTrafo =
                 let r = rand.UniformDouble() * 25.0 + 10.0
                 let phi = rand.UniformDouble() * Constant.PiTimesTwo
@@ -117,50 +117,17 @@ let main argv =
                         rot * trans
                     )
 
-            TraceObject(trafo, None, Some chitShader, None, cubeAS, SymDict.empty)
+            if cube then
+                TraceObject(trafo, None, Some chitShader, None, cubeAS, SymDict.empty)
+            else
+                TraceObject(trafo, None, Some chitShader, Some sphereIntShader, sphereAS, SymDict.empty)
 
-    let objects = Mod.init (HRefSet.single (createObject true))
-
-    (*let dynamicRotation speed =
-        let startTime = System.DateTime.Now
-        window.Time |> Mod.map (fun t ->
-            let t = (t - startTime).TotalSeconds
-            Trafo3d.RotationZ (speed * t)
-        )
-
-    let obj1 : TraceObject = {
-        transform = dynamicRotation 0.25 |> Mod.map (fun rot -> rot * Trafo3d.Translation(0.0, -5.0, -5.0))
-        closestHitShader = Some chitShader
-        anyHitShader = None
-        intersectionShader = None
-        geometry = cubeAS
-        userData = SymDict.empty
-    }
-       
-
-    let obj2 : TraceObject = {
-        transform = dynamicRotation -2.0 |> Mod.map (fun rot -> rot * Trafo3d.Translation(-1.0, 0.0, -2.0))
-        closestHitShader = Some chitShader
-        anyHitShader = None
-        intersectionShader = None
-        geometry = cubeAS
-        userData = SymDict.empty
-    }
-
-    let obj3 : TraceObject = {
-        transform =  dynamicRotation 1.0 |> Mod.map (fun rot -> Trafo3d.Translation(4.0, 0.0, -2.0) * rot)
-        closestHitShader = Some chitShader
-        anyHitShader = None
-        intersectionShader = Some sphereIntShader
-        geometry = sphereAS
-        userData = SymDict.empty
-    }*)
+    let objects = Mod.init HRefSet.empty
 
     let resultImage =
         let mutable current = None
 
-        Mod.custom (fun token ->
-            let s = window.Sizes.GetValue token
+        window.Sizes |> Mod.map(fun s ->
             current |> Option.iter runtime.DeleteTexture
             current <- Some <| runtime.CreateTexture(s, TextureFormat.Rgba8, 1, 1)
             current.Value
@@ -206,10 +173,11 @@ let main argv =
              |> Sg.effect [ DefaultSurfaces.diffuseTexture |> toEffect ]
              |> Sg.compile runtime window.FramebufferSignature
 
-
     let myRender =
+        let size = resultImage |> Mod.map (fun x -> x.Size)
+
         RenderTask.custom (fun (t, rt, fbo) ->
-            task.Run t <| TraceCommand.TraceToTexture resultImage
+            task.Run t <| (TraceCommand.TraceToTexture(resultImage, size))
             final.Run(t, rt, fbo)
         )
 
@@ -220,8 +188,11 @@ let main argv =
         match k with
             | Keys.Enter ->
                 transact (fun () ->
+                    let rand = System.Random()
                     let set = Mod.force objects
-                    Mod.change objects (set |> HRefSet.add (createObject (System.Random().NextDouble() > 0.5)))
+                    let dynamic = rand.NextDouble() > 0.5
+                    let cube = rand.NextDouble() > 0.5
+                    Mod.change objects (set |> HRefSet.add (createObject dynamic cube))
                 )
             | Keys.Delete ->
                 transact (fun () ->

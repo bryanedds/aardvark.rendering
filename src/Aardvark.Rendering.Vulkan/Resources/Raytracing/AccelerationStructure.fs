@@ -242,6 +242,8 @@ module AccelerationStructure =
           |> retrieveHandle
           |> ignore
 
+    // BUG: Doesn't work for TLAS with no instances
+    // https://devtalk.nvidia.com/default/topic/1066165/vulkan/-rtx-building-tlas-with-zero-instances-doesn-t-update-result-memory/
     let private build (info : AccelerationStructureInfo) (updateOnly : bool) (s : AccelerationStructure) =
         let instanceBuffer =
             match s.Description with
@@ -302,7 +304,7 @@ module AccelerationStructure =
             allocateMemory s
 
         // Build and sync
-        s.Device.GraphicsFamily.run {
+        s.Device.eventually {
             do! build
             do! barrier
         }

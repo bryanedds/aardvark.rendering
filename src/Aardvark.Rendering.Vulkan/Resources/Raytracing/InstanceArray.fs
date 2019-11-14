@@ -23,7 +23,7 @@ type private InstanceWriter (input : TraceObject, compile : AdaptiveToken -> Tra
 
 /// Array that holds VkGeometryInstance structs that adaptively
 /// resizes and stays compact
-type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
+type InstanceArray(input : aset<TraceObject>) =
     inherit AdaptiveObject()
 
     let reader = input.GetReader()
@@ -46,8 +46,9 @@ type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceOb
         mapping.[key] <- index
 
     // Applies all the pending adds and removes, and compacts the buffer
-    let applyDeltas (token : AdaptiveToken) (adds : List<TraceObject>) (rems : List<TraceObject>) =
-        
+    let applyDeltas (token : AdaptiveToken) (compile : AdaptiveToken -> TraceObject -> VkGeometryInstance)
+                        (adds : List<TraceObject>) (rems : List<TraceObject>) =
+
         let free = Queue(rems |> Seq.map (fun k -> mapping.[k]))
         let delta = adds.Count - rems.Count
 
@@ -90,7 +91,7 @@ type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceOb
 
         assert(free.IsEmpty())
 
-    member x.Update (token : AdaptiveToken) =
+    member x.Update (token : AdaptiveToken, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
         x.EvaluateIfNeeded token data (fun token ->
             let deltas = reader.GetOperations token
 
@@ -103,7 +104,7 @@ type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceOb
                         | Add(_, obj) -> obj |> adds.Add |> ignore
                         | Rem(_, obj) -> obj |> rems.Add |> ignore
 
-                applyDeltas token adds rems
+                applyDeltas token compile adds rems
 
             for KeyValue(obj, w) in writers do
                 w.WriteTrafo(token, data, mapping.[obj])
@@ -111,5 +112,8 @@ type InstanceArray(input : aset<TraceObject>, compile : AdaptiveToken -> TraceOb
             data
         )
 
+    member x.Dispose() =
+        reader.Dispose()
+
     interface IDisposable with
-        member x.Dispose() = reader.Dispose()
+        member x.Dispose() = x.Dispose()

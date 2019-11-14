@@ -7,6 +7,7 @@ open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.Rendering.Vulkan.Raytracing
+open Aardvark.Rendering.Vulkan.NVRayTracing
 open Microsoft.FSharp.NativeInterop
 
 #nowarn "9"
@@ -1188,11 +1189,24 @@ module Resources =
             if input.GetValue token then 1 else 0
 
     type InstanceBufferResource(owner : IResourceCache, key : list<obj>, 
-                                 device : Device, input : InstanceArray) =
+                                 device : Device, shaderPool : IResourceLocation<ShaderPool>,
+                                 objects : aset<TraceObject>, assign : TraceObject -> int) =
         inherit AbstractResourceLocation<InstanceBuffer>(owner, key)
 
         let mutable handle = None
         let mutable version = 0
+
+        let array = new InstanceArray(objects)
+
+        let compileObject (shaderPool : ShaderPool) (token : AdaptiveToken) (obj : TraceObject) =
+            let trafo = obj.Transform.GetValue token
+            let hitGroup = shaderPool.GetHitGroupIndex obj
+
+            VkGeometryInstance(
+                trafo, assign obj, 0xffuy, hitGroup,
+                VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
+                unbox obj.Geometry.Handle
+            )
 
         let create instances =
             handle <- Some (InstanceBuffer.create device instances)
@@ -1204,28 +1218,31 @@ module Resources =
             if not success then
                 InstanceBuffer.delete buffer
                 create instances
+            else
+                inc &version
 
         override x.Create() =
-            ()
+            shaderPool.Acquire()
 
         override x.Destroy() =
             handle |> Option.iter InstanceBuffer.delete
+            shaderPool.Release()
+            array.Dispose()
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then
-                let instances = input.Update token
+                let pool = shaderPool.Update token
+                let instances = array.Update(token, compileObject pool.handle)
 
                 match handle with
                     | Some s -> update instances s
                     | None -> create instances
 
-                { handle = handle.Value; version = version }
-            else
-                { handle = handle.Value; version = version }
+            { handle = handle.Value; version = version }
 
     type AccelerationStructureResource(owner : IResourceCache, key : list<obj>, 
                                        device : Device, resources : IResourceLocation list,
-                                       getDesc : AdaptiveToken -> AccelerationStructureDescription) =
+                                       getDescription : AdaptiveToken -> AccelerationStructureDescription) =
         inherit AbstractResourceLocation<AccelerationStructure>(owner, key)
 
         let mutable handle = None
@@ -1241,25 +1258,132 @@ module Resources =
             if not success then
                 AccelerationStructure.delete s
                 create desc
+            else
+                inc &version
 
         override x.Create() =
             resources |> List.iter (fun r -> r.Acquire())
 
         override x.Destroy() =
-            resources |> List.iter (fun r -> r.Release())
             handle |> Option.iter AccelerationStructure.delete
+            resources |> List.iter (fun r -> r.Release())
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then
-                let desc = getDesc token
+                let desc = getDescription token
 
                 match handle with
                     | Some s -> update desc s
                     | None -> create desc
 
-                { handle = handle.Value; version = version }
+            { handle = handle.Value; version = version }
+
+    type ShaderPoolResource(owner : IResourceCache, key : list<obj>,
+                                device : Device, scene : TraceScene) =
+        inherit AbstractResourceLocation<ShaderPool>(owner, key)
+
+        let pool = new ShaderPool(device, scene)
+        let mutable version = 0
+
+        override x.Create() =
+            ()
+
+        override x.Destroy() =
+            pool.Dispose()
+
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let changed = pool.Update token
+
+                if changed then
+                    inc &version
+
+            { handle = pool; version = version }
+
+    type TracePipelineResource(owner : IResourceCache, key : list<obj>,
+                                device : Device, layout : PipelineLayout, maxRecursionDepth : uint32,
+                                shaderPool : IResourceLocation<ShaderPool>) =
+        inherit AbstractResourceLocation<TracePipeline>(owner, key)
+
+        let mutable handle = None
+        let mutable version = 0
+        let mutable poolVersion = -1
+
+        let baseDescription = TracePipelineDescription.create layout maxRecursionDepth
+
+        let destroy() =
+            handle |> Option.iter TracePipeline.delete
+            handle <- None
+
+        let create desc =
+            destroy()
+            handle <- Some (TracePipeline.create device desc)
+            inc &version
+
+        override x.Create() =
+            shaderPool.Acquire()
+
+        override x.Destroy() =
+            destroy()
+            shaderPool.Release()
+
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let info = shaderPool.Update token
+
+                if info.version <> poolVersion then
+                    let pool = info.handle
+
+                    baseDescription |> pool.GetPipelineDescription
+                                    |> create
+
+                    poolVersion <- info.version
+
+            { handle = handle.Value; version = version }
+
+    type ShaderBindingTableResource(owner : IResourceCache, key : list<obj>,
+                                        device : Device, pipeline : IResourceLocation<TracePipeline>) =
+        inherit AbstractResourceLocation<ShaderBindingTable>(owner, key)
+
+        let mutable handle = None
+        let mutable version = 0
+        let mutable pipelineVersion = -1
+
+        let create pipeline entries =
+            handle <- Some (ShaderBindingTable.create device pipeline entries)
+            inc &version
+
+        let update pipeline entries table =
+            let success = table |> ShaderBindingTable.tryUpdate pipeline entries
+
+            if not success then
+                ShaderBindingTable.delete table
+                create pipeline entries
             else
-                { handle = handle.Value; version = version }
+                inc &version
+
+        override x.Create() =
+            pipeline.Acquire()
+
+        override x.Destroy() =
+            handle |> Option.iter ShaderBindingTable.delete
+            pipeline.Release()
+
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let info = pipeline.Update token
+
+                if info.version <> pipelineVersion then
+                    let pipeline = info.handle
+                    let entries = TracePipeline.getShaderBindingTableEntries pipeline
+
+                    match handle with
+                        | Some tbl -> tbl |> update pipeline.Handle entries
+                        | None -> create pipeline.Handle entries
+
+                    pipelineVersion <- info.version
+
+            { handle = handle.Value; version = version }
 
 open Resources
 type ResourceManager(user : IResourceUser, device : Device) =
@@ -1292,6 +1416,9 @@ type ResourceManager(user : IResourceUser, device : Device) =
 
     let instanceBufferCache         = ResourceLocationCache<InstanceBuffer>(user)
     let accelerationStructureCache  = ResourceLocationCache<AccelerationStructure>(user)
+    let shaderPoolCache             = ResourceLocationCache<ShaderPool>(user)
+    let tracePipelineCache          = ResourceLocationCache<TracePipeline>(user)
+    let shaderBindingTableCache     = ResourceLocationCache<ShaderBindingTable>(user)
     
     static let toInputTopology =
         LookupTable.lookupTable [
@@ -1334,6 +1461,9 @@ type ResourceManager(user : IResourceUser, device : Device) =
 
         instanceBufferCache.Clear()
         accelerationStructureCache.Clear()
+        shaderPoolCache.Clear()
+        tracePipelineCache.Clear()
+        shaderBindingTableCache.Clear()
 
 
     member x.Device = device
@@ -1603,16 +1733,16 @@ type ResourceManager(user : IResourceUser, device : Device) =
     member x.CreateIsActive(value : IMod<bool>) =
         isActiveCache.GetOrCreate([value :> obj], fun cache key -> IsActiveResource(cache, key, value))
 
-    member x.CreateInstanceBuffer(instances : InstanceArray) =
-        let key = [ instances :> obj ]
+    member x.CreateInstanceBuffer(shaderPool : IResourceLocation<ShaderPool>, objects : aset<TraceObject>, assign : TraceObject -> int) =
+        let key = [ shaderPool :> obj; objects :> obj; assign :> obj ]
         instanceBufferCache.GetOrCreate(
             key,
             fun cache key ->
-                new InstanceBufferResource(cache, key, device, instances)
+                new InstanceBufferResource(cache, key, device, shaderPool, objects, assign)
         )
 
     member x.CreateAccelerationStructure(instanceBuffer : IResourceLocation<InstanceBuffer>) =
-        let getDesc (token : AdaptiveToken) =
+        let getDescription (token : AdaptiveToken) =
             let buffer = (instanceBuffer.Update token).handle
 
             { instances = buffer.Handle
@@ -1624,12 +1754,12 @@ type ResourceManager(user : IResourceUser, device : Device) =
             key,
             fun cache key ->
                 new AccelerationStructureResource(
-                    cache, key, device, [instanceBuffer :> IResourceLocation], getDesc
+                    cache, key, device, [instanceBuffer :> IResourceLocation], getDescription
                 )
         )
 
     member x.CreateAccelerationStructure(desc : IMod<AccelerationStructureDescription>) =
-        let getDesc (token : AdaptiveToken) =
+        let getDescription (token : AdaptiveToken) =
             desc.GetValue token
 
         let key = [ desc :> obj ]
@@ -1637,7 +1767,37 @@ type ResourceManager(user : IResourceUser, device : Device) =
             key,
             fun cache key ->
                 new AccelerationStructureResource(
-                    cache, key, device, [], getDesc
+                    cache, key, device, [], getDescription
+                )
+        )
+
+    member x.CreateShaderPool(scene : TraceScene) =
+        let key = [ scene :> obj ]
+        shaderPoolCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new ShaderPoolResource(
+                    cache, key, device, scene
+                )
+        )
+
+    member x.CreateTracePipeline(layout : PipelineLayout, maxRecursionDepth : uint32, shaderPool : IResourceLocation<ShaderPool>) =
+        let key = [ layout :> obj; maxRecursionDepth :> obj; shaderPool :> obj ]
+        tracePipelineCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new TracePipelineResource(
+                    cache, key, device, layout, maxRecursionDepth, shaderPool
+                )
+        )
+
+    member x.CreateShaderBindingTable(pipeline : IResourceLocation<TracePipeline>) =
+        let key = [ pipeline :> obj ]
+        shaderBindingTableCache.GetOrCreate(
+            key,
+            fun cache key ->
+                new ShaderBindingTableResource(
+                    cache, key, device, pipeline
                 )
         )
 

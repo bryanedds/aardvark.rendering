@@ -24,13 +24,21 @@ type ShaderBindingTableEntry = {
     inlineData : uint8[]
 }
 
-type ShaderBindingTableEntries =
-    {
-        sections : Dict<ShaderBindingTableEntryType, ShaderBindingTableEntry list>
-    }
+type ShaderBindingTableEntries(data) =
 
-    member x.Values = x.sections.Values |> Seq.map List.rev
-    member x.Count = x.sections.Values |> Seq.sumBy List.length
+    let data : Map<ShaderBindingTableEntryType, ShaderBindingTableEntry list> = data
+
+    member x.Values = data |> Map.toSeq
+
+    member x.Count = x.Values |> Seq.sumBy (fun (_, x) -> List.length x)
+
+    member x.Item
+        with get(index) = data.[index]
+
+    member x.Add kind values =
+        data |> Map.add kind values |> ShaderBindingTableEntries
+
+    //member x.Values = x.sections |> Map.toSeq |> Seq.map (fun (_, x) -> List.rev x)
 
 type ShaderBindingTable =
     class
@@ -85,22 +93,21 @@ module ShaderBindingTableEntries =
     let count (entries : ShaderBindingTableEntries) =
         entries.Count
 
-    let values (entries : ShaderBindingTableEntries) =
-        entries.Values
-
     let empty : ShaderBindingTableEntries =
-        let d = Dict.empty
-
-        for c in Enum.GetValues typeof<ShaderBindingTableEntryType> do
-            let t = unbox<ShaderBindingTableEntryType> c
-            d.[t] <- []
-
-        { sections = d }
+        Enum.GetValues typeof<ShaderBindingTableEntryType>
+            |> Seq.cast
+            |> Seq.map (fun c -> unbox c, [])
+            |> Map.ofSeq
+            |> ShaderBindingTableEntries
 
     let add (kind : ShaderBindingTableEntryType) (data : uint8[]) (entries : ShaderBindingTableEntries) =
-        let e = { kind = kind; groupIndex = entries.Count; inlineData = data }
-        entries.sections.[kind] <- e::entries.sections.[kind]
-        entries
+        let index = count entries
+        let entry = { kind = kind; groupIndex = index; inlineData = data }
+
+        let values =
+            List.append entries.[kind] [entry]
+
+        entries.Add kind values
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module ShaderBindingTable =
@@ -125,26 +132,27 @@ module ShaderBindingTable =
 
     // Returns the total size of the table
     let private getTotalSize (handleSize : uint32) (entries : ShaderBindingTableEntries) =
-        entries.sections.Values |> Seq.sumBy (fun e -> 
-            (uint32 e.Length) * getEntrySize handleSize e
-        )
+        entries.Values
+            |> Seq.sumBy (fun (_, e) ->
+                (uint32 e.Length) * getEntrySize handleSize e
+            )
     
     // Returns the base offset for the given entry type
     let private getOffset (kind : ShaderBindingTableEntryType) (handleSize : uint32) (entries : ShaderBindingTableEntries) =
-        entries.sections.KeyValuePairs 
-            |> Seq.takeWhile (fun x -> x.Key <> kind)
-            |> Seq.sumBy (fun x -> 
-                uint64 (getEntrySize handleSize x.Value * uint32 x.Value.Length)
+        entries.Values
+            |> Seq.takeWhile (fun x -> fst x <> kind)
+            |> Seq.sumBy (fun (_, e) ->
+                uint64 (getEntrySize handleSize e * uint32 e.Length)
             )
 
     let private getOffsetsAndStrides (handleSize : uint32) (entries : ShaderBindingTableEntries) =
         getOffset ShaderBindingTableEntryType.Raygen handleSize entries,
         getOffset ShaderBindingTableEntryType.Miss handleSize entries,
-        uint64 (getEntrySize handleSize entries.sections.[ShaderBindingTableEntryType.Miss]),
+        uint64 (getEntrySize handleSize entries.[ShaderBindingTableEntryType.Miss]),
         getOffset ShaderBindingTableEntryType.HitGroup handleSize entries,
-        uint64 (getEntrySize handleSize entries.sections.[ShaderBindingTableEntryType.HitGroup]),
+        uint64 (getEntrySize handleSize entries.[ShaderBindingTableEntryType.HitGroup]),
         getOffset ShaderBindingTableEntryType.Callable handleSize entries,
-        uint64 (getEntrySize handleSize entries.sections.[ShaderBindingTableEntryType.Callable])
+        uint64 (getEntrySize handleSize entries.[ShaderBindingTableEntryType.Callable])
        
     let tryUpdate (pipeline : VkPipeline) (entries : ShaderBindingTableEntries) (table : ShaderBindingTable) =
         let totalSize = getTotalSize table.ShaderGroupHandleSize entries
@@ -165,10 +173,10 @@ module ShaderBindingTable =
                 let mutable pOutput : nativeptr<uint8> = NativePtr.ofNativeInt ptr
                 let handleSize = int table.ShaderGroupHandleSize
             
-                entries.Values |> Seq.iter (fun x ->
+                entries.Values |> Seq.iter (fun (_, x) ->
                     let entrySize = int <| getEntrySize table.ShaderGroupHandleSize x
 
-                    x |> Seq.iter (fun e ->
+                    x |> List.iter (fun e ->
                         Marshal.Copy(shaderHandles, e.groupIndex * handleSize, NativePtr.toNativeInt pOutput, handleSize)
                         Marshal.Copy(e.inlineData, 0, NativePtr.toNativeInt (pOutput &+ handleSize), e.inlineData.Length)
                         pOutput <- pOutput &+ entrySize

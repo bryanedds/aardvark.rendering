@@ -93,6 +93,8 @@ module TracePipelineDescription =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TracePipeline =
 
+    // BUG: Leaks memory
+    // https://devtalk.nvidia.com/default/topic/1063669/vulkan/vkcreateraytracingpipelinesnv-api-memory-leak-/
     let create (device : Device) (desc : TracePipelineDescription) =
         
         let handle =

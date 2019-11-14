@@ -3,31 +3,20 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Rendering.Vulkan
+open Aardvark.Base.Monads.State
 
-// The shader pool contains all the shaders included in the scene
-// Duplicate shaders are removed at two levels: first duplicate code is only compiled to
-// a module once, second duplicate hit groups are removed completely
-type ShaderPool<'source, 'compiled when 'source : comparison> = {
+open System
 
-    // Dict mapping source to compiled modules
-    // Duplicate sources are removed
-    modules : Dict<ShaderStage, Dict<'source, 'compiled>>
+[<AutoOpen>]
+module private ShaderPoolHelpers =
 
-    // List of shader groups
-    // Identical hit groups are removed
-    groups : ShaderGroup<'source> list
+    module ModifyState =
 
-    // (Local) indices of the hit groups (e.g. the first hit group has index 0
-    // even if it is not the first shader group over all. Used in the
-    // instanceOffset field of the VkGeometryInstance struct
-    hitGroupIndices  : Dict<ShaderGroup<'source>, int>
-}
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module ShaderPool =
+        let set (v : bool) : State<bool, unit> =
+            State.modify(fun m -> m || v)
 
     // TODO: Remove this once FShade can handle RTX shaders
-    let private dummyShaderModule (device : Device) (stage : Aardvark.Base.ShaderStage) (code : byte[]) =
+    let dummyShaderModule (device : Device) (stage : Aardvark.Base.ShaderStage) (code : byte[]) =
         let handle =
             native {
                 let! pCode = code
@@ -46,14 +35,19 @@ module ShaderPool =
 
         new ShaderModule(device, handle, stage, Map.empty, code)
 
-    let create (device : Device) (scene : TraceScene) =
+type ShaderPool(device : Device, scene : TraceScene) as this =
+    inherit AdaptiveObject()
 
+    let reader = scene.Objects.GetReader()
+
+    // Dict mapping source to compiled modules
+    // Duplicate sources are removed
+    let modules =
         let createCache stage shaders =
             shaders |> List.distinct
                     |> List.map (fun source -> source, dummyShaderModule device stage source)
                     |> Dict.ofList
 
-        // Create cache to lookup shader modules based on stage and source
         let cache = Dict.empty
 
         cache.[ShaderStage.Raygen] <-
@@ -65,43 +59,70 @@ module ShaderPool =
         cache.[ShaderStage.Callable] <-
             scene.CallableShaders |> createCache ShaderStage.Callable
 
-        cache.[ShaderStage.AnyHit] <-
-            scene.Objects |> ASet.toList |> List.choose (fun o -> o.AnyHitShader)
-                          |> createCache ShaderStage.AnyHit
-                          
-        cache.[ShaderStage.ClosestHit] <-
-            scene.Objects |> ASet.toList |> List.choose (fun o -> o.ClosestHitShader)
-                          |> createCache ShaderStage.ClosestHit
-                          
-        cache.[ShaderStage.Intersection] <-
-            scene.Objects |> ASet.toList |> List.choose (fun o -> o.IntersectionShader)
-                          |> createCache ShaderStage.Intersection        
+        cache.[ShaderStage.AnyHit] <- Dict.empty
+        cache.[ShaderStage.ClosestHit] <- Dict.empty             
+        cache.[ShaderStage.Intersection] <- Dict.empty
 
-        // Remove duplicate hit groups
-        let hitGroups =
-            scene.Objects |> ASet.toList |> List.map ShaderGroup.ofTraceObject
-                          |> List.distinct
+        cache
 
-        // Create shader groups
-        let shaderGroups =
-            [
-                scene.RaygenShader |> (Raygen >> List.singleton)
-                scene.MissShaders |> List.map Miss
-                scene.CallableShaders |> List.map Callable
-                hitGroups
-            ] 
-            |> List.concat
+    // List of shader groups
+    // Identical hit groups are removed
+    let groups = HashSet.ofList [
+        yield scene.RaygenShader |> Raygen
+        yield! scene.MissShaders |> List.map Miss
+        yield! scene.CallableShaders |> List.map Callable
+    ]
 
-        {
-            groups          = shaderGroups
-            modules         = cache
-            hitGroupIndices = hitGroups |> List.indexed
-                                        |> List.map (fun (i, x) -> x, i)
-                                        |> Dict.ofList
-        }
+    // (Local) indices of the hit groups (e.g. the first hit group has index 0
+    // even if it is not the first shader group over all. Used in the
+    // instanceOffset field of the VkGeometryInstance struct
+    let hitGroupIndices = Dict.empty
 
-    let addToPipelineDescription (pool : ShaderPool<_,_>) (desc : TracePipelineDescription) =
+    let add (obj : TraceObject) =
 
+        let addModule stage source =
+            if not (modules.[stage].ContainsKey source) then
+                modules.[stage].[source] <- dummyShaderModule device stage source
+
+        // Add modules
+        obj.AnyHitShader |> Option.iter (addModule ShaderStage.AnyHit)
+        obj.ClosestHitShader |> Option.iter (addModule ShaderStage.ClosestHit)
+        obj.IntersectionShader |> Option.iter (addModule ShaderStage.Intersection)
+
+        // Add hit group
+        let g = ShaderGroup.ofTraceObject obj
+        groups |> HashSet.add g |> ModifyState.set
+
+    let rem (obj : TraceObject) =
+        // TODO: Do even want to do something here?
+        ModifyState.set false
+
+    let update token =
+        this.EvaluateIfNeeded token false (fun token ->
+            let deltas = reader.GetOperations token
+
+            let modified =
+                state {
+                    for d in deltas do
+                        match d with
+                            | Add(_, obj) -> do! add obj
+                            | Rem(_, obj) -> do! rem obj
+
+                } |> State.run false |> fst
+            
+            // Update hit group indices
+            if modified then
+                groups |> Seq.filter ShaderGroup.isHitGroup
+                       |> Seq.iteri (fun i g -> hitGroupIndices.[g] <- i)
+
+            modified
+        )
+
+    let getHitGroupIndex (obj : TraceObject) =
+        let g = ShaderGroup.ofTraceObject obj
+        hitGroupIndices.[g]
+
+    let getPipelineDescription (desc : TracePipelineDescription) =
         // Keep track of stage indices
         let indices = Dict.empty
         
@@ -111,24 +132,36 @@ module ShaderPool =
         // Add stages to description
         let mutable description = desc
 
-        for KeyValue(stage, perStage) in pool.modules do
+        for KeyValue(stage, perStage) in modules do
             for KeyValue(source, shader) in perStage do
 
                 indices.[(stage, source)] <- uint32 description.stages.Length
                 description <- TracePipelineDescription.addShaderStage shader description
                 
         // Add groups referencing the indices
-        for group in pool.groups do
+        for group in groups do
             let group = ShaderGroup.mapWithStage lookup group
             description <- TracePipelineDescription.addShaderGroup group description
 
         description
 
-    let delete (device : Device) (pool : ShaderPool<_,_>) =
-        pool.modules.Values |> Seq.iter (fun dict ->
+    /// Updates the shader pool and returns if it has been
+    /// modified
+    member x.Update (token : AdaptiveToken) =
+        update token
+
+    member x.GetHitGroupIndex (obj : TraceObject) =
+        getHitGroupIndex obj
+
+    member x.GetPipelineDescription (desc : TracePipelineDescription) =
+        getPipelineDescription desc
+
+    member x.Dispose() =
+        reader.Dispose()
+
+        modules.Values |> Seq.iter (fun dict ->
             dict.Values |> Seq.iter (fun g -> ShaderModule.delete g device)
         ) 
 
-    let getHitGroupIndex (obj : TraceObject) (pool : ShaderPool<_,_>) =
-        let g = ShaderGroup.ofTraceObject obj
-        pool.hitGroupIndices.[g]
+    interface IDisposable with
+        member x.Dispose() = x.Dispose()
