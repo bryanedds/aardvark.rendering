@@ -95,7 +95,7 @@ module TracePipeline =
 
     // BUG: Leaks memory
     // https://devtalk.nvidia.com/default/topic/1063669/vulkan/vkcreateraytracingpipelinesnv-api-memory-leak-/
-    let create (device : Device) (desc : TracePipelineDescription) =
+    let create (device : Device) (basePipeline : TracePipeline option) (desc : TracePipelineDescription) =
         
         let handle =
             native {
@@ -120,16 +120,21 @@ module TracePipeline =
                         ShaderGroupCreateInfo.getIntersectionShader g
                     )
                 )
+
+                let basePipeline, derivativeFlag =
+                    match basePipeline with
+                        | None -> VkPipeline.Null, VkPipelineCreateFlags.None
+                        | Some x -> x.Handle, VkPipelineCreateFlags.DerivativeBit
                 
                 let! pInfo =
                     VkRayTracingPipelineCreateInfoNV(
                         VkStructureType.RayTracingPipelineCreateInfoNv, 0n,
-                        VkPipelineCreateFlags.None,
+                        VkPipelineCreateFlags.AllowDerivativesBit ||| derivativeFlag,
                         uint32 desc.stages.Length, pStages, 
                         uint32 desc.groups.Length, pGroups,
                         min (RaytracingProperties.maxRecursionDepth device) desc.maxRecursionDepth,
                         desc.layout.Handle,
-                        VkPipeline.Null, 0
+                        basePipeline, 0
                     )
 
                 let! pHandle = VkPipeline.Null

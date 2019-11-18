@@ -1324,8 +1324,9 @@ module Resources =
             handle <- None
 
         let create desc =
-            destroy()
-            handle <- Some (TracePipeline.create device desc)
+            let basePipeline = handle
+            handle <- Some (TracePipeline.create device basePipeline desc)
+            basePipeline |> Option.iter TracePipeline.delete
             inc &version
 
         override x.Create() =
