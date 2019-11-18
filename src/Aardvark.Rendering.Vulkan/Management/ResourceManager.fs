@@ -309,6 +309,8 @@ type AbstractPointerResource<'a when 'a : unmanaged>(owner : IResourceCache, key
 
     member x.Pointer = ptr
 
+    member x.HasHandle = hasHandle
+
     member x.NoChange() =
         dec &version
 
@@ -953,11 +955,17 @@ module Resources =
                     let depthStencil = depthStencil.Update(token) |> ignore; depthStencil.Pointer
                     let colorBlendState = colorBlendState.Update(token) |> ignore; colorBlendState.Pointer
 
+                    let basePipeline, derivativeFlag =
+                        if not x.HasHandle then
+                            VkPipeline.Null, VkPipelineCreateFlags.None
+                        else
+                            !!x.Pointer, VkPipelineCreateFlags.DerivativeBit
+
                     let! pHandle = VkPipeline.Null
                     let! pDesc =
                         VkGraphicsPipelineCreateInfo(
                             VkStructureType.GraphicsPipelineCreateInfo, 0n,
-                            VkPipelineCreateFlags.None,
+                            VkPipelineCreateFlags.AllowDerivativesBit ||| derivativeFlag,
                             uint32 prog.ShaderCreateInfos.Length,
                             pShaderCreateInfos,
                             inputState,
@@ -972,7 +980,7 @@ module Resources =
                             prog.PipelineLayout.Handle,
                             renderPass.Handle,
                             0u,
-                            VkPipeline.Null,
+                            basePipeline,
                             0
                         )
 

@@ -205,12 +205,6 @@ type UniformProvider private() =
 
 
 
-
-//module private RenderObjectIds =
-//    open System.Threading
-//    let mutable private currentId = 0
-//    let newId() = Interlocked.Increment &currentId
-
 [<AutoOpen>]
 module private RenderObjectHelpers =
     let private nopDisposable = { new IDisposable with member x.Dispose() = () }
