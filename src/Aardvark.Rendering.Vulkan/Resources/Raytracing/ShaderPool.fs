@@ -7,6 +7,8 @@ open Aardvark.Base.Monads.State
 
 open System
 
+open FShade
+
 [<AutoOpen>]
 module private ShaderPoolHelpers =
 
@@ -51,13 +53,13 @@ type ShaderPool(device : Device, scene : TraceScene) as this =
         let cache = Dict.empty
 
         cache.[ShaderStage.Raygen] <-
-            [scene.RaygenShader] |> createCache ShaderStage.Raygen
+            [scene.RaygenShader.binary] |> createCache ShaderStage.Raygen
 
         cache.[ShaderStage.Miss] <-
-            scene.MissShaders |> createCache ShaderStage.Miss
+            scene.MissShaders |> List.map TraceShader.binary |> createCache ShaderStage.Miss
 
         cache.[ShaderStage.Callable] <-
-            scene.CallableShaders |> createCache ShaderStage.Callable
+            scene.CallableShaders |> List.map TraceShader.binary |> createCache ShaderStage.Callable
 
         cache.[ShaderStage.AnyHit] <- Dict.empty
         cache.[ShaderStage.ClosestHit] <- Dict.empty             
@@ -68,9 +70,9 @@ type ShaderPool(device : Device, scene : TraceScene) as this =
     // List of shader groups
     // Identical hit groups are removed
     let groups = HashSet.ofList [
-        yield scene.RaygenShader |> Raygen
-        yield! scene.MissShaders |> List.map Miss
-        yield! scene.CallableShaders |> List.map Callable
+        yield scene.RaygenShader |> TraceShader.binary |> Raygen
+        yield! scene.MissShaders |> List.map (TraceShader.binary >> Miss)
+        yield! scene.CallableShaders |> List.map (TraceShader.binary >> Callable)
     ]
 
     // (Local) indices of the hit groups (e.g. the first hit group has index 0
@@ -85,9 +87,9 @@ type ShaderPool(device : Device, scene : TraceScene) as this =
                 modules.[stage].[source] <- dummyShaderModule device stage source
 
         // Add modules
-        obj.AnyHitShader |> Option.iter (addModule ShaderStage.AnyHit)
-        obj.ClosestHitShader |> Option.iter (addModule ShaderStage.ClosestHit)
-        obj.IntersectionShader |> Option.iter (addModule ShaderStage.Intersection)
+        obj.AnyHitShader |> Option.iter (TraceShader.binary >> addModule ShaderStage.AnyHit)
+        obj.ClosestHitShader |> Option.iter (TraceShader.binary >> addModule ShaderStage.ClosestHit)
+        obj.IntersectionShader |> Option.iter (TraceShader.binary >> addModule ShaderStage.Intersection)
 
         // Add hit group
         let g = ShaderGroup.ofTraceObject obj

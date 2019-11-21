@@ -3,119 +3,10 @@
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
-open Aardvark.Base.Rendering
 open Aardvark.Rendering.Vulkan.Raytracing
 open Aardvark.Rendering.Vulkan.NVRayTracing
 
 open System
-open System.Runtime.InteropServices
-
-[<Struct; StructLayout(LayoutKind.Sequential)>]
-type CameraUniform =
-    struct
-        new(v, p) = {viewInverse = v; projInverse = p}
-
-        val viewInverse : M44f
-        val projInverse : M44f
-    end
-
-[<Struct; StructLayout(LayoutKind.Sequential)>]
-type RaytracingSettings =
-    struct
-        new(bounces, min, max) = {maxBounces = bounces; tmin = min; tmax = max}
-
-        val maxBounces : uint32
-        val tmin : float32
-        val tmax : float32
-    end
-
-[<AutoOpen>]
-module DummyHelpers =
-    open FShade
-    open FShade.GLSL
-    open FShade.Formats
-    open FShade.Imperative
-
-    let backend = Backends.glslVulkan
-
-    let raygenInfo : RayHitInfo =
-        {
-            neededUniforms = Map.ofList [
-                "resultImage", typeof<IntImage2d<rgba8i>>
-                "camera", typeof<CameraUniform>
-                "raytracingSettings", typeof<RaytracingSettings>
-                "scene", typeof<VkAccelerationStructureNV>
-            ]
-            neededSamplers = Map.empty
-            neededBuffers = Map.empty
-            payloadInType = typeof<unit>
-            payloadOutType = typeof<unit>
-        }
-
-    let fixedBindings = LookupTable.lookupTable [
-        "resultImage", 0
-        "camera", 1
-        "raytracingSettings", 2
-        "scene", 3
-    ]
-
-    let getType t =
-        let t = GLSLType.ofCType backend.Config.reverseMatrixLogic (CType.ofType backend t)
-        let (final, _, _) = t |> LayoutStd140.layout
-        final
-        
-    let getFields t =
-        match (getType t) with
-            | Struct(_, fields, _) -> fields |> List.map (fun (name, typ, _) -> name, typ)
-            | _ -> []
-
-    let getUniformBuffer set binding name typ =
-        let t = getType typ
-
-        let toUniformBufferField (name, typ, offset) = {
-            ufName = name
-            ufType = typ
-            ufOffset = offset
-        }
-
-        match t with
-            | Struct(_, fields, size) ->
-                {
-                    ubSet = set
-                    ubBinding = binding
-                    ubName = name
-                    ubFields = fields |> List.map toUniformBufferField
-                    ubSize = size
-                }
-            | _ ->
-                failwith "Not a struct"
-
-    let assign (info : RayHitInfo) =
-
-        let mapi f =
-            (Map.toList >> List.mapi f >> Map.ofList)
-
-        let uniformBuffers =
-            info.neededUniforms 
-                |> mapi (fun i (name, uniform) -> ((0, fixedBindings name), (name, getFields uniform)))
-
-        let samplers =
-            let offset = uniformBuffers.Count
-            info.neededSamplers
-                |> mapi (fun i (name, sampler) -> ((0, fixedBindings name), (name, sampler)))
-
-        let buffers =
-            let offset = uniformBuffers.Count + samplers.Count
-            info.neededBuffers
-                |> mapi (fun i (name, (dim, buffer)) -> ((0, fixedBindings name), (name, dim, buffer)))
-
-        {
-            uniformBuffers = uniformBuffers
-            samplers = samplers
-            buffers = buffers
-            payloadInLocation = 0
-            payloadOutLocation = 0
-        }
 
 [<AutoOpen>]
 module ``Trace Command Extensions`` =
@@ -205,10 +96,8 @@ type TraceTask(device : Device, scene : TraceScene) =
     let manager = new ResourceManager(user, device)
     let resources = new ResourceLocationSet(user)
 
-    let raygenInterface = assign raygenInfo
-
     let preparedScene =
-        let prep = manager.PrepareTraceScene(raygenInfo, raygenInterface, scene)
+        let prep = manager.PrepareTraceScene(scene)
         prep.resources |> List.iter resources.Add
 
         prep

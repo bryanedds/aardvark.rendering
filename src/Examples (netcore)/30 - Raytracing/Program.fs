@@ -8,7 +8,10 @@ open Aardvark.SceneGraph
 
 open System
 open System.IO
-open Aardvark.Base
+open System.Runtime.InteropServices
+
+open FShade
+open FShade.Formats
 
 let quad =
     let quad =
@@ -23,6 +26,25 @@ let quad =
             ], SymDict.empty)
 
     quad |> Sg.ofIndexedGeometry
+
+[<Struct; StructLayout(LayoutKind.Sequential)>]
+type CameraUniform =
+    struct
+        new(v, p) = {viewInverse = v; projInverse = p}
+
+        val viewInverse : M44f
+        val projInverse : M44f
+    end
+
+[<Struct; StructLayout(LayoutKind.Sequential)>]
+type RaytracingSettings =
+    struct
+        new(bounces, min, max) = {maxBounces = bounces; tmin = min; tmax = max}
+
+        val maxBounces : uint32
+        val tmin : float32
+        val tmax : float32
+    end
 
 [<EntryPoint>]
 let main argv = 
@@ -42,10 +64,34 @@ let main argv =
     //    }
     let runtime = window.Runtime :> IRuntime
 
-    let raygenShader = File.ReadAllBytes "primary.rgen.spv"
-    let missShader = File.ReadAllBytes "primary.rmiss.spv"
-    let chitShader = File.ReadAllBytes "primary.rchit.spv"
-    let sphereIntShader = File.ReadAllBytes "sphere.rint.spv"
+    let raygenShader =
+        {
+            binary = File.ReadAllBytes "primary.rgen.spv"
+            info =
+                TraceShaderInfo.empty
+                |> TraceShaderInfo.uniform "resultImage" typeof<IntImage2d<rgba8i>>
+                |> TraceShaderInfo.uniform "camera" typeof<CameraUniform>
+                |> TraceShaderInfo.uniform "raytracingSettings" typeof<RaytracingSettings>
+                |> TraceShaderInfo.scene "scene"
+        }
+
+    let missShader =
+        {
+            binary = File.ReadAllBytes "primary.rmiss.spv"
+            info = TraceShaderInfo.empty
+        }
+
+    let chitShader =
+        {
+            binary = File.ReadAllBytes "primary.rchit.spv"
+            info = TraceShaderInfo.empty
+        }
+
+    let sphereIntShader =
+        {
+            binary = File.ReadAllBytes "sphere.rint.spv"
+            info = TraceShaderInfo.empty
+        }
 
     let cubeVertexBuffer, cubeIndexBuffer =
         
@@ -139,26 +185,28 @@ let main argv =
             |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 50.0 (float s.X / float s.Y))
     let cameraView = DefaultCameraController.control window.Mouse window.Keyboard window.Time initialView
 
-    let viewInv, projInv =
+    let cameraUniform =
         let invTrans (t : Trafo3d) =
             M44f.op_Explicit t.Backward.Transposed
 
-        cameraView |> Mod.map (CameraView.viewTrafo >> invTrans),
-        frustum |> Mod.map (Frustum.projTrafo >> invTrans)
+        Mod.map2 (fun v f ->
+            CameraUniform(
+                v |> CameraView.viewTrafo |> invTrans,
+                f |> Frustum.projTrafo |> invTrans
+            )
+        ) cameraView frustum
 
-    let bounces, tmin, tmax =
-        ~~0u, ~~0.0f, ~~500.0f
+    let raytracingSettings =
+       ~~RaytracingSettings(0u, 0.0f, 500.0f)
 
     let scene : TraceScene =
         TraceScene(
             raygenShader, [missShader], [],
+            [chitShader; sphereIntShader],
             objects |> ASet.ofMod,
             SymDict.ofList [
-                Symbol.Create "viewInverse@", viewInv :> IMod
-                Symbol.Create "projInverse@", projInv :> IMod
-                Symbol.Create "maxBounces@", bounces :> IMod
-                Symbol.Create "tmin@", tmin :> IMod
-                Symbol.Create "tmax@", tmax :> IMod                
+                Symbol.Create "camera", cameraUniform :> IMod
+                Symbol.Create "raytracingSettings", raytracingSettings :> IMod
             ],
             SymDict.empty,
             SymDict.ofList [

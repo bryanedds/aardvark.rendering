@@ -1606,7 +1606,21 @@ type ResourceManager(user : IResourceUser, device : Device) =
                     | _ -> failf "invalid storage buffer"
                 )
             new BufferResource(cache, key, device, usage, buffer)
-        ) 
+        )
+
+    member x.CreateStorageBuffer(layout : FShade.GLSL.GLSLStorageBuffer, values : SymbolDict<IMod<IBuffer>>) =
+        let provider = {
+            new IUniformProvider with
+                member x.TryGetUniform(_, name) =
+                    match values.TryGetValue(name) with
+                        | true, value -> Some (value :> IMod)
+                        | _ -> None
+
+            interface IDisposable with
+                member x.Dispose() = ()
+        }
+
+        x.CreateStorageBuffer(Ag.emptyScope, layout, provider, SymDict.empty)
 
     member x.CreateUniformBuffer(scope : Ag.Scope, layout : FShade.GLSL.GLSLUniformBuffer, u : IUniformProvider, additional : SymbolDict<IMod>) =
         let values =

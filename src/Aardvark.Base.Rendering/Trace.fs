@@ -2,6 +2,7 @@
 
 open System
 open Aardvark.Base.Incremental
+open FShade
 
 // TODO: What am I supposed to use here?
 type MyBuffer = {
@@ -37,15 +38,15 @@ type TraceObject(transform, anyHitShader, closestHitShader,
 
     /// The any hit shader is called on the first hit
     /// that is encountered (not necessarily the closest)
-    member x.AnyHitShader : byte[] option = anyHitShader
+    member x.AnyHitShader : TraceShader option = anyHitShader
 
     /// The closest hit shader is called for the closest
     /// ray-object intersection
-    member x.ClosestHitShader : byte[] option = closestHitShader
+    member x.ClosestHitShader : TraceShader option = closestHitShader
 
     /// The intersection shader allows the user to provide logic
     /// for the ray-object intersection (e.g. for a parametric sphere)
-    member x.IntersectionShader : byte[] option = intersectionShader
+    member x.IntersectionShader : TraceShader option = intersectionShader
 
     /// The actual geometry of the object compiled to an acceleration
     /// structure
@@ -56,17 +57,23 @@ type TraceObject(transform, anyHitShader, closestHitShader,
     member x.UserData : SymbolDict<obj> = userData
 
 /// Object describing a scene to be raytraced
-type TraceScene(raygenShader, missShaders, callableShaders, objects, globals, buffers, textures) =
+type TraceScene(raygenShader, missShaders, callableShaders, hitGroupShaders, objects, globals, buffers, textures) =
 
     /// Describes how initial rays are generated
-    member x.RaygenShader : byte[] = raygenShader
+    member x.RaygenShader : TraceShader = raygenShader
 
     /// Describes what happens when a ray does not intersect with
     /// any object in the scene (e.g. return constant color)
-    member x.MissShaders : list<byte[]> = missShaders
+    member x.MissShaders : TraceShader list = missShaders
 
     /// Shaders that can be invoked from other shaders
-    member x.CallableShaders : list<byte[]> = callableShaders
+    member x.CallableShaders : TraceShader list = callableShaders
+
+    /// Shaders to be used in hit groups for objects in the scene have to be supplied
+    /// a priori when creating the scene. All the shaders used for a scene consitute an interface
+    /// that is used to create the raytracing pipeline. Consequently, the pipeline layout is known when creating the scene
+    /// and does not have to be changed dynamically as new objects with new hit groups are added.
+    member x.HitGroupShaders : TraceShader list = hitGroupShaders
     
     /// Objects in the scene
     member x.Objects : TraceObject aset = objects
@@ -75,7 +82,7 @@ type TraceScene(raygenShader, missShaders, callableShaders, objects, globals, bu
     member x.Globals : SymbolDict<IMod> = globals
 
     /// Global buffers
-    member x.Buffers : SymbolDict<IMod<IBackendBuffer>> = buffers
+    member x.Buffers : SymbolDict<IMod<IBuffer>> = buffers
 
     /// Global textures
     member x.Textures : SymbolDict<IMod<ITexture>> = textures

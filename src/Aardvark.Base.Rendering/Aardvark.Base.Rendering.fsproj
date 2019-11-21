@@ -32,6 +32,7 @@
     <Compile Include="Types\ResourceAccess.fs" />
     <Compile Include="Resources\Buffers.fs" />
     <Compile Include="Resources\Textures.fs" />
+    <Compile Include="FShadeRTX.fs" />
     <Compile Include="Trace.fs" />
     <Compile Include="Compute.fs" />
     <Compile Include="Timer.fs" />

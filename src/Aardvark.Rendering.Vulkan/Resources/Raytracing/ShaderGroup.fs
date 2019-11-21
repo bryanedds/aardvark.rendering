@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.Rendering.Vulkan.Raytracing
 
+open FShade
 open Aardvark.Base
 
 // A shader group is either a single raygen, miss, or callable shader respectively
@@ -18,7 +19,11 @@ module ShaderGroup =
         | _ -> false
 
     let ofTraceObject (obj : TraceObject) =
-        HitGroup (obj.AnyHitShader, obj.ClosestHitShader, obj.IntersectionShader)
+        HitGroup (
+            obj.AnyHitShader |> Option.map TraceShader.binary,
+            obj.ClosestHitShader |> Option.map TraceShader.binary,
+            obj.IntersectionShader |> Option.map TraceShader.binary
+        )
 
     let mapWithStage (f : ShaderStage -> 'a -> 'b) = function
         | Raygen x              -> Raygen (f ShaderStage.Raygen x)
