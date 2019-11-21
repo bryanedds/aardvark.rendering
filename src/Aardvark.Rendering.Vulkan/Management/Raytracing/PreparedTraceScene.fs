@@ -316,9 +316,9 @@ type DevicePreparedRenderObjectExtensions private() =
                             failwith "Not implemented"
                 )
 
-            this.CreateDescriptorSet(descriptorSetLayout, Array.toList descriptors)
+            this.CreateDescriptorSet(descriptorSetLayout, descriptors)
 
-        let descriptorSetBindings = this.CreateDescriptorSetBinding(pipelineLayout, [descriptorSet])
+        let descriptorSetBindings = this.CreateDescriptorSetBinding(pipelineLayout, [|descriptorSet|])
         resources.Add(descriptorSetBindings)
 
         // Pipeline

@@ -734,7 +734,7 @@ module Resources =
             DrawCall.Direct(indexed, List.toArray calls)
 
 
-    type DescriptorSetResource(owner : IResourceCache, key : list<obj>, layout : DescriptorSetLayout, bindings : list<AdaptiveDescriptor>) =
+    type DescriptorSetResource(owner : IResourceCache, key : list<obj>, layout : DescriptorSetLayout, bindings : AdaptiveDescriptor[]) =
         inherit AbstractResourceLocation<DescriptorSet>(owner, key)
 
         let mutable handle : Option<DescriptorSet> = None
@@ -793,7 +793,7 @@ module Resources =
             if x.OutOfDate then
                 
                 let bindings =
-                    bindings |> List.toArray |> Array.map (fun b ->
+                    bindings |> Array.map (fun b ->
                         match b with
                             | AdaptiveUniformBuffer(slot, b) ->
                                 let handle =
@@ -1039,10 +1039,9 @@ module Resources =
         override x.Free(b : VertexBufferBinding) =
             b.Dispose()
 
-    type DescriptorSetBindingResource(owner : IResourceCache, key : list<obj>, layout : PipelineLayout, sets : list<IResourceLocation<DescriptorSet>>) =
+    type DescriptorSetBindingResource(owner : IResourceCache, key : list<obj>, layout : PipelineLayout, sets : IResourceLocation<DescriptorSet>[]) =
         inherit AbstractPointerResource<DescriptorSetBinding>(owner, key)
 
-        let sets = List.toArray sets
         let mutable setVersions = Array.init sets.Length (fun _ -> -1)
         let mutable target : Option<DescriptorSetBinding> = None
 
@@ -1664,7 +1663,7 @@ type ResourceManager(user : IResourceUser, device : Device) =
 
         x.CreateUniformBuffer(Ag.emptyScope, layout, provider, SymDict.empty)
 
-    member x.CreateDescriptorSet(layout : DescriptorSetLayout, bindings : list<AdaptiveDescriptor>) =
+    member x.CreateDescriptorSet(layout : DescriptorSetLayout, bindings : AdaptiveDescriptor[]) =
         descriptorSetCache.GetOrCreate([layout :> obj; bindings :> obj], fun cache key -> new DescriptorSetResource(cache, key, layout, bindings))
         
     member x.CreateVertexInputState(program : PipelineInfo, mode : IMod<Map<Symbol, VertexInputDescription>>) =
@@ -1747,7 +1746,7 @@ type ResourceManager(user : IResourceUser, device : Device) =
     member x.CreateVertexBufferBinding(buffers : list<IResourceLocation<Buffer> * int64>) =
         bufferBindingCache.GetOrCreate([buffers :> obj], fun cache key -> new BufferBindingResource(cache, key, buffers))
 
-    member x.CreateDescriptorSetBinding(layout : PipelineLayout, bindings : list<IResourceLocation<DescriptorSet>>) =
+    member x.CreateDescriptorSetBinding(layout : PipelineLayout, bindings : IResourceLocation<DescriptorSet>[]) =
         descriptorBindingCache.GetOrCreate([layout :> obj; bindings :> obj], fun cache key -> new DescriptorSetBindingResource(cache, key, layout, bindings))
         
     member x.CreateIndexBufferBinding(binding : IResourceLocation<Buffer>, t : VkIndexType) =
