@@ -235,9 +235,10 @@ module private DummyHelpers =
 
 type PreparedTraceScene =
     {
-        device      : Device
-        original    : TraceScene
-        resources   : IResourceLocation list
+        device              : Device
+        original            : TraceScene
+        resources           : IResourceLocation list
+        additionalResources : IDisposable list
 
         pipeline            : IResourceLocation<TracePipeline>
         pipelineLayout      : PipelineLayout
@@ -248,6 +249,7 @@ type PreparedTraceScene =
 
     member x.Dispose() =
         for r in x.resources do r.Release()
+        for r in x.additionalResources do r.Dispose()
         PipelineLayout.delete x.pipelineLayout x.device
         DescriptorSetLayout.delete x.descriptorSetLayout x.device
 
@@ -264,11 +266,11 @@ type DevicePreparedRenderObjectExtensions private() =
 
         let resources = System.Collections.Generic.List<IResourceLocation>()
 
-        let shaderPool = this.CreateShaderPool(scene)
+        let indexPool = IndexPool.create scene
+        let shaderPool = ShaderPool.create this.Device scene
 
         // Top-level acceleration structure
-        // TODO: Handle IDs
-        let instanceBuffer = this.CreateInstanceBuffer(shaderPool, scene.Objects, fun _ -> 0)
+        let instanceBuffer = this.CreateInstanceBuffer(indexPool, shaderPool)
         let tlAS = this.CreateAccelerationStructure(instanceBuffer)
 
         // Compute the combined bindings of all shaders
@@ -329,9 +331,10 @@ type DevicePreparedRenderObjectExtensions private() =
         resources.Add(shaderBindingTable)
 
         {
-            device      = this.Device
-            original    = scene
-            resources   = resources |> CSharpList.toList
+            device              = this.Device
+            original            = scene
+            resources           = resources |> CSharpList.toList
+            additionalResources = [indexPool; shaderPool]
 
             pipeline            = pipeline
             pipelineLayout      = pipelineLayout

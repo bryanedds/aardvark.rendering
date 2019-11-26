@@ -1195,25 +1195,14 @@ module Resources =
         override x.Compute (token : AdaptiveToken) =
             if input.GetValue token then 1 else 0
 
-    type InstanceBufferResource(owner : IResourceCache, key : list<obj>, 
-                                 device : Device, shaderPool : IResourceLocation<ShaderPool>,
-                                 objects : aset<TraceObject>, assign : TraceObject -> int) =
+    type InstanceBufferResource(owner : IResourceCache, key : list<obj>, device : Device,
+                                indexPool : IndexPool, shaderPool : ShaderPool) =
         inherit AbstractResourceLocation<InstanceBuffer>(owner, key)
 
         let mutable handle = None
         let mutable version = 0
 
-        let array = new InstanceArray(objects)
-
-        let compileObject (shaderPool : ShaderPool) (token : AdaptiveToken) (obj : TraceObject) =
-            let trafo = obj.Transform.GetValue token
-            let hitGroup = shaderPool.GetHitGroupIndex obj
-
-            VkGeometryInstance(
-                trafo, assign obj, 0xffuy, hitGroup,
-                VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
-                unbox obj.Geometry.Handle
-            )
+        let array = InstanceArray.create indexPool shaderPool
 
         let create instances =
             handle <- Some (InstanceBuffer.create device instances)
@@ -1229,21 +1218,19 @@ module Resources =
                 inc &version
 
         override x.Create() =
-            shaderPool.Acquire()
+            ()
 
         override x.Destroy() =
             handle |> Option.iter InstanceBuffer.delete
-            shaderPool.Release()
-            array.Dispose()
+            InstanceArray.delete array
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then
-                let pool = shaderPool.Update token
-                let instances = array.Update(token, compileObject pool.handle)
+                array.Update token
 
                 match handle with
-                    | Some s -> update instances s
-                    | None -> create instances
+                    | Some s -> update array.Data s
+                    | None -> create array.Data
 
             { handle = handle.Value; version = version }
 
@@ -1285,36 +1272,14 @@ module Resources =
 
             { handle = handle.Value; version = version }
 
-    type ShaderPoolResource(owner : IResourceCache, key : list<obj>,
-                                device : Device, scene : TraceScene) =
-        inherit AbstractResourceLocation<ShaderPool>(owner, key)
-
-        let pool = new ShaderPool(device, scene)
-        let mutable version = 0
-
-        override x.Create() =
-            ()
-
-        override x.Destroy() =
-            pool.Dispose()
-
-        override x.GetHandle(token : AdaptiveToken) =
-            if x.OutOfDate then
-                let changed = pool.Update token
-
-                if changed then
-                    inc &version
-
-            { handle = pool; version = version }
-
     type TracePipelineResource(owner : IResourceCache, key : list<obj>,
                                 device : Device, layout : PipelineLayout, maxRecursionDepth : uint32,
-                                shaderPool : IResourceLocation<ShaderPool>) =
+                                shaderPool : ShaderPool) =
         inherit AbstractResourceLocation<TracePipeline>(owner, key)
 
         let mutable handle = None
         let mutable version = 0
-        let mutable poolVersion = -1
+        let mutable description = None
 
         let baseDescription = TracePipelineDescription.create layout maxRecursionDepth
 
@@ -1325,27 +1290,24 @@ module Resources =
         let create desc =
             let basePipeline = handle
             handle <- Some (TracePipeline.create device basePipeline desc)
+            description <- Some desc
             basePipeline |> Option.iter TracePipeline.delete
             inc &version
 
         override x.Create() =
-            shaderPool.Acquire()
+            ()
 
         override x.Destroy() =
             destroy()
-            shaderPool.Release()
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then
-                let info = shaderPool.Update token
+                shaderPool.Update token
+                let desc = shaderPool.GetPipelineDescription baseDescription
 
-                if info.version <> poolVersion then
-                    let pool = info.handle
-
-                    baseDescription |> pool.GetPipelineDescription
-                                    |> create
-
-                    poolVersion <- info.version
+                match handle with
+                | Some _ when description |> Option.contains desc -> ()
+                | _ -> create desc
 
             { handle = handle.Value; version = version }
 
@@ -1386,8 +1348,8 @@ module Resources =
                     let entries = TracePipeline.getShaderBindingTableEntries pipeline
 
                     match handle with
-                        | Some tbl -> tbl |> update pipeline.Handle entries
-                        | None -> create pipeline.Handle entries
+                    | Some tbl -> tbl |> update pipeline.Handle entries
+                    | None -> create pipeline.Handle entries
 
                     pipelineVersion <- info.version
 
@@ -1755,12 +1717,12 @@ type ResourceManager(user : IResourceUser, device : Device) =
     member x.CreateIsActive(value : IMod<bool>) =
         isActiveCache.GetOrCreate([value :> obj], fun cache key -> IsActiveResource(cache, key, value))
 
-    member x.CreateInstanceBuffer(shaderPool : IResourceLocation<ShaderPool>, objects : aset<TraceObject>, assign : TraceObject -> int) =
-        let key = [ shaderPool :> obj; objects :> obj; assign :> obj ]
+    member x.CreateInstanceBuffer(indexPool : IndexPool, shaderPool : ShaderPool) =
+        let key = [ indexPool :> obj; shaderPool :> obj ]
         instanceBufferCache.GetOrCreate(
             key,
             fun cache key ->
-                new InstanceBufferResource(cache, key, device, shaderPool, objects, assign)
+                new InstanceBufferResource(cache, key, device, indexPool, shaderPool)
         )
 
     member x.CreateAccelerationStructure(instanceBuffer : IResourceLocation<InstanceBuffer>) =
@@ -1793,17 +1755,7 @@ type ResourceManager(user : IResourceUser, device : Device) =
                 )
         )
 
-    member x.CreateShaderPool(scene : TraceScene) =
-        let key = [ scene :> obj ]
-        shaderPoolCache.GetOrCreate(
-            key,
-            fun cache key ->
-                new ShaderPoolResource(
-                    cache, key, device, scene
-                )
-        )
-
-    member x.CreateTracePipeline(layout : PipelineLayout, maxRecursionDepth : uint32, shaderPool : IResourceLocation<ShaderPool>) =
+    member x.CreateTracePipeline(layout : PipelineLayout, maxRecursionDepth : uint32, shaderPool : ShaderPool) =
         let key = [ layout :> obj; maxRecursionDepth :> obj; shaderPool :> obj ]
         tracePipelineCache.GetOrCreate(
             key,

@@ -2,8 +2,8 @@
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.Rendering.Vulkan.NVRayTracing
 
-open System
 open System.Collections.Generic
 
 type private InstanceWriter (input : TraceObject, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
@@ -23,10 +23,8 @@ type private InstanceWriter (input : TraceObject, compile : AdaptiveToken -> Tra
 
 /// Array that holds VkGeometryInstance structs that adaptively
 /// resizes and stays compact
-type InstanceArray(input : aset<TraceObject>) =
-    inherit AdaptiveObject()
-
-    let reader = input.GetReader()
+type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
+    inherit TraceSceneReader(indices.Scene)
 
     // CPU buffer
     let mutable data : VkGeometryInstance[] = Array.empty
@@ -45,16 +43,26 @@ type InstanceArray(input : aset<TraceObject>) =
         keys.[index] <- key
         mapping.[key] <- index
 
-    // Applies all the pending adds and removes, and compacts the buffer
-    let applyDeltas (token : AdaptiveToken) (compile : AdaptiveToken -> TraceObject -> VkGeometryInstance)
-                        (adds : List<TraceObject>) (rems : List<TraceObject>) =
+    let compileObject (token : AdaptiveToken) (obj : TraceObject) =
+        let trafo = obj.Transform.GetValue token
+        let index = indices.Get obj
+        let hitGroup = shaders.GetHitGroupIndex obj
 
-        let free = Queue(rems |> Seq.map (fun k -> mapping.[k]))
-        let delta = adds.Count - rems.Count
+        //printfn "Assigned index: %d" index
+
+        VkGeometryInstance(
+            trafo, index, 0xffuy, hitGroup,
+            VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
+            unbox obj.Geometry.Handle
+        )
+
+    let applyDeltas (token : AdaptiveToken) (added : TraceObject seq) (removed : TraceObject seq) =
+        let free = Queue(removed |> Seq.map (fun k -> mapping.[k]))
+        let delta = Seq.length added - Seq.length removed
 
         let oldCount = data.Length
         let newCount = oldCount + delta
-        
+    
         // If we remove more instances than we add, we may end up with
         // holes. Copy elements from the end into these holes.
         for i in 0 .. -(delta + 1) do
@@ -75,15 +83,15 @@ type InstanceArray(input : aset<TraceObject>) =
             free.Enqueue i
 
         // Remove elements
-        for k in rems do
+        for k in removed do
             writers.Remove k |> ignore
             mapping.Remove k |> ignore
 
         // Add elements
-        for k in adds do
+        for k in added do
             let i = free.Dequeue()
 
-            let w = InstanceWriter(k, compile)
+            let w = InstanceWriter(k, compileObject)
             w.Write(token, data, i)
             writers.[k] <- w
 
@@ -91,29 +99,27 @@ type InstanceArray(input : aset<TraceObject>) =
 
         assert(free.IsEmpty())
 
-    member x.Update (token : AdaptiveToken, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
-        x.EvaluateIfNeeded token data (fun token ->
-            let deltas = reader.GetOperations token
+    // Applies all the pending adds and removes, and compacts the buffer
+    override x.ApplyChanges(token, added, removed) =
+        indices.Update token
+        shaders.Update token
 
-            if deltas.Count > 0 then
-                let adds = List(deltas.Count)
-                let rems = List(deltas.Count)
+        // Update trafos of existing objects
+        for KeyValue(obj, w) in writers do
+            w.WriteTrafo(token, data, mapping.[obj])
 
-                for d in deltas do
-                    match d with
-                        | Add(_, obj) -> obj |> adds.Add |> ignore
-                        | Rem(_, obj) -> obj |> rems.Add |> ignore
+        // Handle added and removed objects
+        if Seq.length added + Seq.length removed > 0 then
+            applyDeltas token added removed
 
-                applyDeltas token compile adds rems
+    member x.Data =
+        data
 
-            for KeyValue(obj, w) in writers do
-                w.WriteTrafo(token, data, mapping.[obj])
-        
-            data
-        )
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module InstanceArray =
 
-    member x.Dispose() =
-        reader.Dispose()
+    let create (indices : IndexPool) (shaders : ShaderPool) =
+        new InstanceArray(indices, shaders)
 
-    interface IDisposable with
-        member x.Dispose() = x.Dispose()
+    let delete (array : InstanceArray) =
+        array.Dispose()

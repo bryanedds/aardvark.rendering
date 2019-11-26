@@ -45,9 +45,7 @@
     <Compile Include="Resources\Raytracing\ShaderGroup.fs" />
     <Compile Include="Resources\Raytracing\ShaderBindingTable.fs" />
     <Compile Include="Resources\Raytracing\TracePipeline.fs" />
-    <Compile Include="Resources\Raytracing\ShaderPool.fs" />
     <Compile Include="Resources\Raytracing\GeometryInstance.fs" />
-    <Compile Include="Resources\Raytracing\InstanceArray.fs" />
     <Compile Include="Resources\Raytracing\InstanceBuffer.fs" />
     <Compile Include="Resources\Raytracing\AccelerationStructureDescription.fs" />
     <Compile Include="Resources\Raytracing\AccelerationStructure.fs" />
@@ -64,9 +62,13 @@
     <Compile Include="Swapchain\Surface.fs" />
     <Compile Include="Swapchain\SwapchainDescription.fs" />
     <Compile Include="Swapchain\Swapchain.fs" />
-    <Compile Include="Management\ResourceManager.fs" />
-    <Compile Include="Management\Raytracing\TraceSceneBindings.fs" />
-    <Compile Include="Management\Raytracing\PreparedTraceScene.fs" />
+    <Compile Include="Management\Raytracing\TraceSceneReader.fs" />    
+    <Compile Include="Management\Raytracing\TraceSceneBindings.fs" />    
+    <Compile Include="Management\Raytracing\IndexPool.fs" />    
+    <Compile Include="Management\Raytracing\ShaderPool.fs" />    
+    <Compile Include="Management\Raytracing\InstanceArray.fs" />
+    <Compile Include="Management\ResourceManager.fs" />  
+    <Compile Include="Management\PreparedTraceScene.fs" />
     <Compile Include="Management\PreparedRenderObject.fs" />
     <Compile Include="Runtime\Raytracing\TraceTask.fs" /> 
     <Compile Include="Runtime\DebugReport.fs" />

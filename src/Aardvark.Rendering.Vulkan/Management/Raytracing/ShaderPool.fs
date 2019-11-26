@@ -37,10 +37,8 @@ module private ShaderPoolHelpers =
 
         new ShaderModule(device, handle, stage, Map.empty, code)
 
-type ShaderPool(device : Device, scene : TraceScene) as this =
-    inherit AdaptiveObject()
-
-    let reader = scene.Objects.GetReader()
+type ShaderPool(device : Device, scene : TraceScene) =
+    inherit TraceSceneReader(scene)
 
     // Dict mapping source to compiled modules
     // Duplicate sources are removed
@@ -99,27 +97,6 @@ type ShaderPool(device : Device, scene : TraceScene) as this =
         // TODO: Do even want to do something here?
         ModifyState.set false
 
-    let update token =
-        this.EvaluateIfNeeded token false (fun token ->
-            let deltas = reader.GetOperations token
-
-            let modified =
-                state {
-                    for d in deltas do
-                        match d with
-                            | Add(_, obj) -> do! add obj
-                            | Rem(_, obj) -> do! rem obj
-
-                } |> State.run false |> fst
-            
-            // Update hit group indices
-            if modified then
-                groups |> Seq.filter ShaderGroup.isHitGroup
-                       |> Seq.iteri (fun i g -> hitGroupIndices.[g] <- i)
-
-            modified
-        )
-
     let getHitGroupIndex (obj : TraceObject) =
         let g = ShaderGroup.ofTraceObject obj
         hitGroupIndices.[g]
@@ -147,10 +124,20 @@ type ShaderPool(device : Device, scene : TraceScene) as this =
 
         description
 
-    /// Updates the shader pool and returns if it has been
-    /// modified
-    member x.Update (token : AdaptiveToken) =
-        update token
+    override x.ApplyChanges(_ : AdaptiveToken, added : TraceObject seq, removed : TraceObject seq) : unit =
+        let modified =
+            state {
+                for obj in added do
+                    do! add obj
+
+                for obj in removed do
+                    do! rem obj
+            } |> State.run false |> fst
+        
+        // Update hit group indices
+        if modified then
+            groups |> Seq.filter ShaderGroup.isHitGroup
+                   |> Seq.iteri (fun i g -> hitGroupIndices.[g] <- i)
 
     member x.GetHitGroupIndex (obj : TraceObject) =
         getHitGroupIndex obj
@@ -159,11 +146,18 @@ type ShaderPool(device : Device, scene : TraceScene) as this =
         getPipelineDescription desc
 
     member x.Dispose() =
-        reader.Dispose()
-
         modules.Values |> Seq.iter (fun dict ->
             dict.Values |> Seq.iter (fun g -> ShaderModule.delete g device)
         ) 
 
     interface IDisposable with
-        member x.Dispose() = x.Dispose()
+        member x.Dispose() = x.Dispose(); base.Dispose()
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module ShaderPool =
+
+    let create (device : Device) (scene : TraceScene) =
+        new ShaderPool(device, scene)
+
+    let destroy (pool : ShaderPool) =
+        pool.Dispose()
