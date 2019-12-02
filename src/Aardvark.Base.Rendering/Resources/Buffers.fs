@@ -70,6 +70,19 @@ type ArrayBuffer(data : Array) =
             | :? ArrayBuffer as o -> System.Object.ReferenceEquals(o.Data,data)
             | _ -> false
 
+/// Array buffer that does not use its wrapped (mutable) array to
+/// check for equality and compute the hash code
+type VolatileArrayBuffer(data : Array) =
+    inherit ArrayBuffer(data)
+
+    override x.GetHashCode() =
+        System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode x
+
+    override x.Equals o =
+        match o with
+        | :? VolatileArrayBuffer as o -> System.Object.ReferenceEquals(o, x)
+        | _ -> false
+
 type SingleValueBuffer(value : IMod<V4f>) =
     inherit Mod.AbstractMod<IBuffer>()
 

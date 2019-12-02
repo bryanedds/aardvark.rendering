@@ -52,7 +52,7 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
 
-    let app = new Aardvark.Application.Slim.VulkanApplication()
+    let app = new Aardvark.Application.Slim.VulkanApplication(true)
     let window = app.CreateGameWindow(1, false)
 
     //use window = 
@@ -84,7 +84,9 @@ let main argv =
     let chitShader =
         {
             binary = File.ReadAllBytes "primary.rchit.spv"
-            info = TraceShaderInfo.empty
+            info =
+                TraceShaderInfo.empty
+                |> TraceShaderInfo.buffer "color" { rank = 1; elementType = typeof<C4f> }
         }
 
     let sphereIntShader =
@@ -138,6 +140,10 @@ let main argv =
             let startTime = DateTime.Now
             window.Time |> Mod.map (fun t -> (t - startTime).TotalSeconds)
 
+        let colors = [|
+            C4f.DarkRed; C4f.DarkGreen; C4f.DarkCyan; C4f.DarkMagenta; C4f.DarkYellow; C4f.DarkBlue
+        |]
+
         fun dynamic cube ->
             let axis, turnRate, moveSpeed, initialTrafo =
                 let r = rand.UniformDouble() * 25.0 + 10.0
@@ -163,10 +169,19 @@ let main argv =
                         rot * trans
                     )
 
+            let color =
+                let i = rand.UniformInt(colors.Length)
+                ~~colors.[i]
+
+            let attributes =
+                SymDict.ofList [
+                    Symbol.Create "color", color :> IMod
+                ]
+
             if cube then
-                TraceObject(trafo, None, Some chitShader, None, cubeAS, SymDict.empty)
+                TraceObject(trafo, None, Some chitShader, None, cubeAS, attributes)
             else
-                TraceObject(trafo, None, Some chitShader, Some sphereIntShader, sphereAS, SymDict.empty)
+                TraceObject(trafo, None, Some chitShader, Some sphereIntShader, sphereAS, attributes)
 
     let objects = Mod.init HRefSet.empty
 
@@ -255,6 +270,7 @@ let main argv =
 
     window.Run()
 
+    final.Dispose()
     task.Dispose()
 
     runtime.DeleteTexture (resultImage.GetValue())
@@ -264,4 +280,6 @@ let main argv =
     runtime.DeleteAccelerationStructure sphereAS
     runtime.DeleteBuffer sphereBuffer.Buffer
 
+    window.Dispose()
+    app.Dispose()
     0

@@ -29,7 +29,7 @@ module private DummyHelpers =
          "camera", 1
          "raytracingSettings", 2
          "scene", 3
-         "testBuffer", 4
+         "color", 4
     ]
 
     let assignBindings (bindings : TraceSceneBindings) =
@@ -220,25 +220,13 @@ module private DummyHelpers =
                 return !!pHandle
             }
 
-        let info =    
-            {
-                pInputs         = []
-                pOutputs        = []
-                pUniformBlocks  = []
-                pStorageBlocks  = []
-                pTextures       = []
-                pImages         = []
-                pEffectLayout   = None
-            }
-
-        new PipelineLayout(device, handle, Array.empty, info, 0, Set.empty)
+        new PipelineLayout(device, handle, Array.empty, Unchecked.defaultof<_>, 0, Set.empty)
 
 type PreparedTraceScene =
     {
         device              : Device
         original            : TraceScene
-        resources           : IResourceLocation list
-        additionalResources : IDisposable list
+        manager             : TraceResourceManager
 
         pipeline            : IResourceLocation<TracePipeline>
         pipelineLayout      : PipelineLayout
@@ -248,13 +236,10 @@ type PreparedTraceScene =
     }
 
     member x.Dispose() =
-        for r in x.resources do r.Release()
-        for r in x.additionalResources do r.Dispose()
-        PipelineLayout.delete x.pipelineLayout x.device
-        DescriptorSetLayout.delete x.descriptorSetLayout x.device
+        x.manager.Dispose()
 
     member x.Update(caller : AdaptiveToken) =
-        for r in x.resources do r.Update(caller) |> ignore
+        x.manager.Update caller
 
     interface IDisposable with
         member x.Dispose() = x.Dispose()
@@ -263,8 +248,6 @@ type PreparedTraceScene =
 type DevicePreparedRenderObjectExtensions private() =
 
     static let prepareTraceScene (this : ResourceManager) (scene : TraceScene) =
-
-        let resources = System.Collections.Generic.List<IResourceLocation>()
 
         let indexPool = IndexPool.create scene
         let shaderPool = ShaderPool.create this.Device scene
@@ -288,53 +271,55 @@ type DevicePreparedRenderObjectExtensions private() =
         let descriptorSetLayout = createDescriptorSetLayout this.Device sceneBindings
         let pipelineLayout = createPipelineLayout this.Device descriptorSetLayout.Handle
 
+        // Trace resource manager
+        let manager = new TraceResourceManager(this, scene, descriptorSetLayout.Bindings, indexPool)
+        manager.Add(fun _ -> PipelineLayout.delete pipelineLayout this.Device)
+        manager.Add(fun _ -> DescriptorSetLayout.delete descriptorSetLayout this.Device)
+        manager.Add(indexPool)
+        manager.Add(shaderPool)
+
         let descriptorSet =
             let descriptors =
                 descriptorSetLayout.Bindings |> Array.map (fun b ->
                     match b.Parameter with
-                        | ImageParameter img ->
-                            let texture = scene.Textures.[Symbol.Create img.imageName]
-                            let image = this.CreateImage(texture) 
-                            let view = this.CreateImageView(img.imageType, image)
+                    | ImageParameter img ->
+                        Resources.AdaptiveStorageImage(img.imageBinding, manager.Image img.imageName)
 
-                            Resources.AdaptiveStorageImage(img.imageBinding, view)
+                    | UniformBlockParameter layout ->
+                        // Uniform buffer handles never actually change, thus the descriptor set
+                        // does not create an dependency. For us to see uniform buffer updates, we need
+                        // to manually call update
+                        let buffer = manager.UniformBuffer layout.ubName
+                        manager.Add(buffer)
 
-                        | UniformBlockParameter layout ->
-                            let buffer = this.CreateUniformBuffer(layout, scene.Globals)
-                            resources.Add(buffer)
+                        Resources.AdaptiveUniformBuffer(layout.ubBinding, buffer)
 
-                            Resources.AdaptiveUniformBuffer(layout.ubBinding, buffer)
+                    | AccelerationStructureParameter (_, _, binding) ->
+                        Resources.AdaptiveAccelerationStructure(binding, tlAS)
 
-                        | AccelerationStructureParameter (_, _, binding) ->
-                            Resources.AdaptiveAccelerationStructure(binding, tlAS)
+                    | StorageBufferParameter layout ->
+                        Resources.AdaptiveStorageBuffer(layout.ssbBinding, manager.StorageBuffer layout.ssbName)
 
-                        | StorageBufferParameter layout ->
-                            let buffer = this.CreateStorageBuffer(layout, scene.Buffers)
-                            resources.Add(buffer)
-
-                            Resources.AdaptiveStorageBuffer(layout.ssbBinding, buffer)
-
-                        | SamplerParameter sampler ->
-                            failwith "Not implemented"
+                    | SamplerParameter sampler ->
+                        failwith "Not implemented"
                 )
 
             this.CreateDescriptorSet(descriptorSetLayout, descriptors)
 
         let descriptorSetBindings = this.CreateDescriptorSetBinding(pipelineLayout, [|descriptorSet|])
-        resources.Add(descriptorSetBindings)
+        manager.Add(descriptorSetBindings)
 
         // Pipeline
         let pipeline = this.CreateTracePipeline(pipelineLayout, 0u, shaderPool)
 
         // Shader binding table
         let shaderBindingTable = this.CreateShaderBindingTable(pipeline)
-        resources.Add(shaderBindingTable)
+        manager.Add(shaderBindingTable)
 
         {
             device              = this.Device
             original            = scene
-            resources           = resources |> CSharpList.toList
-            additionalResources = [indexPool; shaderPool]
+            manager             = manager
 
             pipeline            = pipeline
             pipelineLayout      = pipelineLayout

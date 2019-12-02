@@ -1539,6 +1539,20 @@ type ResourceManager(user : IResourceUser, device : Device) =
             | Surface.None -> 
                 failwith "[Vulkan] encountered empty surface"
 
+    member x.CreateStorageBuffer(input : IMod) =
+        let usage = VkBufferUsageFlags.TransferSrcBit ||| VkBufferUsageFlags.TransferDstBit ||| VkBufferUsageFlags.StorageBufferBit
+
+        bufferCache.GetOrCreate([usage :> obj; input :> obj], fun cache key ->
+            let buffer =
+                Mod.custom (fun t ->
+                    match input.GetValue t with
+                    | :? Array as a -> ArrayBuffer(a) :> IBuffer
+                    | :? IBuffer as b -> b
+                    | _ -> failf "invalid storage buffer"
+                )
+            new BufferResource(cache, key, device, usage, buffer)
+        )
+
     member x.CreateStorageBuffer(scope : Ag.Scope, layout : FShade.GLSL.GLSLStorageBuffer, u : IUniformProvider, additional : SymbolDict<IMod>) =
         let value =
             let sem = Symbol.Create layout.ssbName
@@ -1553,21 +1567,7 @@ type ResourceManager(user : IResourceUser, device : Device) =
                                 | (true, m) -> m
                                 | _ -> failwithf "[Vulkan] could not get storage buffer: %A" layout.ssbName
    
-
-
-        let usage = VkBufferUsageFlags.TransferSrcBit ||| VkBufferUsageFlags.TransferDstBit ||| VkBufferUsageFlags.StorageBufferBit
-
-        bufferCache.GetOrCreate([usage :> obj; value :> obj], fun cache key ->
-           
-            let buffer =
-                Mod.custom (fun t ->
-                    match value.GetValue t with
-                    | :? Array as a -> ArrayBuffer(a) :> IBuffer
-                    | :? IBuffer as b -> b
-                    | _ -> failf "invalid storage buffer"
-                )
-            new BufferResource(cache, key, device, usage, buffer)
-        )
+        x.CreateStorageBuffer(value)
 
     member x.CreateStorageBuffer(layout : FShade.GLSL.GLSLStorageBuffer, values : SymbolDict<IMod<IBuffer>>) =
         let provider = {
@@ -1582,6 +1582,20 @@ type ResourceManager(user : IResourceUser, device : Device) =
         }
 
         x.CreateStorageBuffer(Ag.emptyScope, layout, provider, SymDict.empty)
+
+    /// Create uniform buffer for layout with a single field (e.g. single field is the whole struct)
+    member x.CreateUniformBuffer(layout : FShade.GLSL.GLSLUniformBuffer, input : IMod) =
+        let writer =
+            match layout.ubFields with
+            | [f] ->
+                match input.GetType() with
+                | ModOf tSource -> input, UniformWriters.getWriter f.ufOffset f.ufType tSource
+                | t -> failwithf "[UniformBuffer] unexpected input-type %A" t
+            | _ ->
+                failwithf "[UniformBuffer] expected single field in layout but has %d" (layout.ubFields.Length)
+
+        let key = [layout :> obj; input :> obj]
+        uniformBufferCache.GetOrCreate(key, fun cache key -> UniformBufferResource(cache, key, device, layout, [writer]))
 
     member x.CreateUniformBuffer(scope : Ag.Scope, layout : FShade.GLSL.GLSLUniformBuffer, u : IUniformProvider, additional : SymbolDict<IMod>) =
         let values =

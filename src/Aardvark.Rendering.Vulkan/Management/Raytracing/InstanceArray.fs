@@ -6,7 +6,7 @@ open Aardvark.Rendering.Vulkan.NVRayTracing
 
 open System.Collections.Generic
 
-type private InstanceWriter (input : TraceObject, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
+type private InstanceWriter(input : TraceObject, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
     inherit AdaptiveObject()
 
     member x.Write(token : AdaptiveToken, buffer : VkGeometryInstance[], index : int) =
@@ -19,7 +19,13 @@ type private InstanceWriter (input : TraceObject, compile : AdaptiveToken -> Tra
         x.EvaluateIfNeeded token () (fun token ->
             let trafo = input.Transform.GetValue token
             buffer.[index].Transform <- M34f.op_Explicit trafo.Forward
-        ) 
+        )
+
+    member x.Release() =
+        lock x (fun _ ->
+            input.Transform.RemoveOutput x
+            x.Outputs.Clear()
+        )
 
 /// Array that holds VkGeometryInstance structs that adaptively
 /// resizes and stays compact
@@ -47,8 +53,6 @@ type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
         let trafo = obj.Transform.GetValue token
         let index = indices.Get obj
         let hitGroup = shaders.GetHitGroupIndex obj
-
-        //printfn "Assigned index: %d" index
 
         VkGeometryInstance(
             trafo, index, 0xffuy, hitGroup,
@@ -84,7 +88,12 @@ type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
 
         // Remove elements
         for k in removed do
-            writers.Remove k |> ignore
+            match writers.TryGetValue k with
+            | true, w ->
+                w.Release()
+                writers.Remove k |> ignore
+            | _ -> ()
+
             mapping.Remove k |> ignore
 
         // Add elements

@@ -46,40 +46,43 @@ module InstanceBuffer =
         let size = instances.Length * sizeof<VkGeometryInstance>
         let flags = VkBufferUsageFlags.RayTracingBitNv ||| VkBufferUsageFlags.TransferDstBit
 
-        let info =
-            VkBufferCreateInfo(
-                VkStructureType.BufferCreateInfo, 0n,
-                VkBufferCreateFlags.None,
-                uint64 size, 
-                flags,
-                VkSharingMode.Exclusive,
-                0u, NativePtr.zero
-            )
-
-        let handle =
-            info |> pin (fun pInfo ->
-                temporary (fun pHandle ->
-                    VkRaw.vkCreateBuffer(device.Handle, pInfo, NativePtr.zero, pHandle)
-                        |> check "could not create buffer"
-                    NativePtr.read pHandle
+        if size > 0 then
+            let info =
+                VkBufferCreateInfo(
+                    VkStructureType.BufferCreateInfo, 0n,
+                    VkBufferCreateFlags.None,
+                    uint64 size,
+                    flags,
+                    VkSharingMode.Exclusive,
+                    0u, NativePtr.zero
                 )
-            )
 
-        let reqs =
-            temporary (fun ptr ->   
-                VkRaw.vkGetBufferMemoryRequirements(device.Handle, handle, ptr)
-                NativePtr.read ptr
-            )
+            let handle =
+                info |> pin (fun pInfo ->
+                    temporary (fun pHandle ->
+                        VkRaw.vkCreateBuffer(device.Handle, pInfo, NativePtr.zero, pHandle)
+                            |> check "could not create buffer"
+                        NativePtr.read pHandle
+                    )
+                )
 
-        let ptr = device.Alloc(reqs, true)
+            let reqs =
+                temporary (fun ptr ->
+                    VkRaw.vkGetBufferMemoryRequirements(device.Handle, handle, ptr)
+                    NativePtr.read ptr
+                )
 
-        VkRaw.vkBindBufferMemory(device.Handle, handle, ptr.Memory.Handle, uint64 ptr.Offset)
-            |> check "could not bind buffer-memory"
+            let ptr = device.Alloc(reqs, true)
 
-        let buffer = new InstanceBuffer(device, handle, ptr, instances.Length, flags)
-        buffer |> tryUpdate instances |> ignore
+            VkRaw.vkBindBufferMemory(device.Handle, handle, ptr.Memory.Handle, uint64 ptr.Offset)
+                |> check "could not bind buffer-memory"
+
+            let buffer = new InstanceBuffer(device, handle, ptr, instances.Length, flags)
+            buffer |> tryUpdate instances |> ignore
         
-        buffer
+            buffer
+        else
+            new InstanceBuffer(device, VkBuffer.Null, DevicePtr.Null, 0, flags)
 
     let delete (buffer : InstanceBuffer) =
         Buffer.delete buffer buffer.Device

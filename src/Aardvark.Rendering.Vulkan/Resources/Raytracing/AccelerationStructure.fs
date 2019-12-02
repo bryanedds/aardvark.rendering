@@ -362,7 +362,11 @@ module AccelerationStructure =
                 | TopLevel dst, TopLevel src ->
                     // If we have fewer or the same number of instances we can
                     // reuse the acceleration structure
-                    dst.instanceCount <= src.instanceCount,
+
+                    // FIXME: Case for fewer does not work, complains that
+                    // instanceData buffer is not valid. Somehow related to the recreation
+                    // of the handle
+                    dst.instanceCount = src.instanceCount,
                     dst.instanceCount <> src.instanceCount
 
                 | BottomLevel _, BottomLevel _ ->

@@ -41,6 +41,13 @@ type IndexPool(scene : TraceScene) =
     member x.Get(obj : TraceObject) =
         indices.[obj]
 
+    // Returns the highest index among current objects or -1 if there are no objects
+    member x.GetMaximum() =
+        if indices.IsEmpty() then
+            -1
+        else
+            indices.Values |> Seq.max
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module IndexPool =
 

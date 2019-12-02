@@ -94,17 +94,11 @@ type TraceTask(device : Device, scene : TraceScene) =
         }
 
     let manager = new ResourceManager(user, device)
-    let resources = new ResourceLocationSet(user)
-
-    let preparedScene =
-        let prep = manager.PrepareTraceScene(scene)
-        prep.resources |> List.iter resources.Add
-
-        prep
+    let preparedScene = manager.PrepareTraceScene(scene)
 
     member x.Run (token : AdaptiveToken) (commands : List<TraceCommand>) =
         x.EvaluateAlways token (fun t ->
-            resources.Update t |> ignore
+            preparedScene.Update t
 
             let descriptorSet = preparedScene.descriptorSet.Update t
 
@@ -124,6 +118,7 @@ type TraceTask(device : Device, scene : TraceScene) =
 
     member x.Dispose() =
         preparedScene.Dispose()
+        manager.Dispose()
 
     interface ITraceTask with
         member x.Run (token : AdaptiveToken) (commands : List<TraceCommand>) =
