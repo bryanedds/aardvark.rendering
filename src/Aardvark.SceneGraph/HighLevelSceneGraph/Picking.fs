@@ -15,7 +15,10 @@ module ``Sg Picking Extensions`` =
         | Box of Box3d
         | Sphere of Sphere3d
         | Cylinder of Cylinder3d
+        | Triangle of Triangle3d
         | Triangles of KdTree<Triangle3d>
+        | TriangleArray of Triangle3d[]
+        | Custom of Box3d * (RayPart -> Option<float>)
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module PickShape =
@@ -24,7 +27,10 @@ module ``Sg Picking Extensions`` =
                 | Box b -> b
                 | Sphere s -> s.BoundingBox3d
                 | Cylinder c -> c.BoundingBox3d
+                | Triangle t -> t.BoundingBox3d
                 | Triangles b -> b.Bounds
+                | TriangleArray ts -> Box3d(ts |> Array.map ( fun t -> t.BoundingBox3d ))
+                | Custom(b,_) -> b
 
     type Pickable = { trafo : Trafo3d; shape : PickShape }
     
@@ -52,10 +58,16 @@ module ``Sg Picking Extensions`` =
                 | Box b -> RayPart.Intersects(part, b)
                 | Sphere s -> RayPart.Intersects(part, s)
                 | Cylinder c -> RayPart.Intersects(part, c)
+                | Triangle t -> RayPart.Intersects(part, t)
                 | Triangles kdtree ->
                     match KdTree.intersect intersectTriangle part kdtree with
                         | Some hit -> Some hit.T
                         | None -> None
+                | TriangleArray arr -> 
+                    match arr |> Array.choose ( fun t -> RayPart.Intersects(part, t) ) with
+                    | [||] -> None
+                    | ts -> ts |> Array.min |> Some
+                | Custom(_,intersect) -> intersect part 
 
     type PickObject(scope : Ag.Scope, pickable : IMod<Pickable>) =
         member x.Scope = scope
@@ -67,7 +79,8 @@ module ``Sg Picking Extensions`` =
             p.Pickable |> Mod.map Pickable.bounds
 
     type PickTree(objects : aset<PickObject>) =
-        let bvh = BvhTree.ofASet PickObject.bounds objects
+        let bvh = 
+            BvhTree.ofASet (fun a -> PickObject.bounds a |> Mod.map ( fun b -> b.EnlargedBy(1E-8))) objects
 
         static let intersectLeaf (part : RayPart) (p : PickObject) =
             let pickable = p.Pickable |> Mod.force
@@ -283,8 +296,14 @@ module PickingSemantics =
 
            
                                 let pickable = 
+                                    let spatial =
+                                        { new Spatial<Triangle3d>() with
+                                            member x.ComputeBounds(ps) = Spatial.triangle.ComputeBounds(ps).EnlargedBy 1E-8
+                                            member x.PlaneSide(a,b) = Spatial.triangle.PlaneSide(a,b)
+                                        }
+
                                     triangles |> Mod.map ( 
-                                        KdTree.build Spatial.triangle KdBuildInfo.Default >> 
+                                        KdTree.build spatial KdBuildInfo.Default >> 
                                         PickShape.Triangles >>
                                         Pickable.ofShape
                                     )
