@@ -82,11 +82,24 @@ let main argv =
         }
 
     let chitShader =
+        let samplerInfo =
+            {
+                samplerType = typeof<FShade.Sampler2d>
+                textureName = "diffuseTexture"
+                samplerState = SamplerState.empty
+                dimension = SamplerDimension.Sampler2d
+                isArray = false
+                isShadow = false
+                isMS = false
+                valueType = typeof<V4f>
+            }
+
         {
             binary = File.ReadAllBytes "primary.rchit.spv"
             info =
                 TraceShaderInfo.empty
                 |> TraceShaderInfo.buffer "color" { rank = 1; elementType = typeof<C4f> }
+                |> TraceShaderInfo.sampler "diffuseTexture" samplerInfo
         }
 
     let sphereIntShader =
@@ -144,6 +157,8 @@ let main argv =
             C4f.DarkRed; C4f.DarkGreen; C4f.DarkCyan; C4f.DarkMagenta; C4f.DarkYellow; C4f.DarkBlue
         |]
 
+        let diffuseTexture = DefaultTextures.checkerboard
+
         fun dynamic cube ->
             let axis, turnRate, moveSpeed, initialTrafo =
                 let r = rand.UniformDouble() * 25.0 + 10.0
@@ -178,10 +193,15 @@ let main argv =
                     Symbol.Create "color", color :> IMod
                 ]
 
+            let textures =
+                SymDict.ofList [
+                    Symbol.Create "diffuseTexture", diffuseTexture
+                ]
+
             if cube then
-                TraceObject(trafo, None, Some chitShader, None, cubeAS, attributes)
+                TraceObject(trafo, None, Some chitShader, None, cubeAS, attributes, textures)
             else
-                TraceObject(trafo, None, Some chitShader, Some sphereIntShader, sphereAS, attributes)
+                TraceObject(trafo, None, Some chitShader, Some sphereIntShader, sphereAS, attributes, textures)
 
     let objects = Mod.init HRefSet.empty
 

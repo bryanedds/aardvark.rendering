@@ -1,7 +1,6 @@
 ﻿namespace FShade
 
 open System
-open FShade
 
 open Aardvark.Base
 

@@ -186,6 +186,7 @@ module PipelineLayout =
                     VkDescriptorType.UniformBuffer
                     stageFlags
                     (UniformBlockParameter block)
+                    VkDescriptorBindingFlagsEXT.None
                     device
 
             sets.[block.ubSet].Add binding
@@ -196,6 +197,7 @@ module PipelineLayout =
                     VkDescriptorType.StorageBuffer
                     stageFlags
                     (StorageBufferParameter block)
+                    VkDescriptorBindingFlagsEXT.None
                     device
 
             sets.[block.ssbSet].Add binding
@@ -207,6 +209,7 @@ module PipelineLayout =
                     VkDescriptorType.CombinedImageSampler
                     stageFlags
                     (SamplerParameter tex)
+                    VkDescriptorBindingFlagsEXT.None
                     device
 
             sets.[tex.samplerSet].Add binding
@@ -217,6 +220,7 @@ module PipelineLayout =
                     VkDescriptorType.StorageImage
                     stageFlags
                     (ImageParameter img)
+                    VkDescriptorBindingFlagsEXT.None
                     device
 
             sets.[img.imageSet].Add binding

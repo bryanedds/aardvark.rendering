@@ -39,10 +39,10 @@ type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
     let mutable keys : TraceObject[] = Array.empty
 
     // Locations of individual instances in the CPU buffer
-    let mapping : Dict<TraceObject, int> = Dict.empty
+    let mapping = Dictionary<TraceObject, int>()
 
     // Writers tracking the trace objects
-    let writers : Dict<TraceObject, InstanceWriter> = Dict.empty
+    let writers = Dictionary<TraceObject, InstanceWriter>()
 
     // Writes the given instance to an index
     let setIndex (index : int) (key : TraceObject) =

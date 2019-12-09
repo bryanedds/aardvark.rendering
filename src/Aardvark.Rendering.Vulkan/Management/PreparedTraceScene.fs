@@ -13,16 +13,7 @@ open FShade
 // TODO: Remove all this as soon as FShade handles RTX shaders
 [<AutoOpen>]
 module private DummyHelpers =
-    open FShade.GLSL
-    open FShade.Imperative
     open System.Collections.Generic
-
-    let backend = Backends.glslVulkan
-
-    let getType t =
-        let t = GLSLType.ofCType backend.Config.reverseMatrixLogic (CType.ofType backend t)
-        let (final, _, size) = t |> LayoutStd140.layout
-        final, size
 
     let fixedBindings = LookupTable.lookupTable [
          "resultImage", 0
@@ -30,6 +21,7 @@ module private DummyHelpers =
          "raytracingSettings", 2
          "scene", 3
          "color", 4
+         "diffuseTexture", 5
     ]
 
     let assignBindings (bindings : TraceSceneBindings) =
@@ -74,112 +66,51 @@ module private DummyHelpers =
             payloadInLocation = 0
             payloadOutLocation = 0
         }*)
-        
-    let getUniformBuffer set binding name typ =
-        let typ, size = getType typ
-        {
-            ubSet = set
-            ubBinding = binding
-            ubName = name
-            ubFields = [{ufName = name; ufType = typ; ufOffset = 0}]
-            ubSize = size
-        }
 
-    let getImage set binding name format dim isArray isMS valueType typ =
-        let imageType = {
-            original = typ
-            format = ImageFormat.ofFormatType format
-            dimension = dim
-            isArray = isArray
-            isMS = isMS
-            valueType = GLSLType.ofCType backend.Config.reverseMatrixLogic (CType.ofType backend valueType)
-        }
+    let createDescriptorSetLayout (device : Device) (shaderParams : TraceSceneShaderParams) =
 
-        {
-            imageSet = set
-            imageBinding = binding
-            imageName = name
-            imageType = imageType
-        }
-
-    let getSampler set binding name (info : SamplerInfo) =
-        let samplerType = {
-            original = info.samplerType
-            dimension = info.dimension
-            isShadow = info.isShadow
-            isArray = info.isArray
-            isMS = info.isMS
-            valueType = GLSLType.ofCType backend.Config.reverseMatrixLogic (CType.ofType backend info.valueType)
-        }
-
-        {
-            samplerSet = set
-            samplerBinding = binding
-            samplerName = name
-            samplerCount = 1
-            samplerTextures = [info.textureName, info.samplerState]
-            samplerType = samplerType
-        }
-
-    let getBuffer set binding name (info : BufferInfo) =
-        {
-            ssbSet = set
-            ssbBinding = binding
-            ssbName = name
-            ssbType = GLSLType.ofCType backend.Config.reverseMatrixLogic (CType.ofType backend info.elementType)
-        }
-
-    let createDescriptorSetLayout (device : Device) (bindings : TraceSceneBindings) =
-
-        let uniformParam set binding name typ =
-            match typ with
-            | ImageType (format, dim, isArray, isMS, valueType) ->
-                VkDescriptorType.StorageImage,
-                ShaderUniformParameter.ImageParameter (getImage set binding name format dim isArray isMS valueType typ)
-            | _ ->
-                VkDescriptorType.UniformBuffer,
-                ShaderUniformParameter.UniformBlockParameter (getUniformBuffer set binding name typ)
-
-        let scenes =
-            bindings.scenes
-            |> Seq.map (fun (KeyValue(name, binding)) ->
-                let set = fst binding.key.Value
-                let binding = snd binding.key.Value
-
-                VkDescriptorType.AccelerationStructureNv,
-                ShaderUniformParameter.AccelerationStructureParameter(name, set, binding)
-            )
-
-        let uniforms =
-            bindings.uniforms
-            |> Seq.map (fun (KeyValue(name, binding)) ->
-                let typ = binding.value
-                let set = fst binding.key.Value
-                let binding = snd binding.key.Value
-
-                uniformParam set binding name typ
-            )
+        let map f x =
+            x |> Seq.map (fun (KeyValue(name, value)) -> f name value)
 
         let samplers =
-            bindings.samplers
-            |> Seq.map (fun (KeyValue(name, binding)) ->
-                let info = binding.value
-                let set = fst binding.key.Value
-                let binding = snd binding.key.Value
+            shaderParams.samplers |> map (fun _ sampler ->
+                let partiallyBound =
+                    if sampler.samplerCount > 1 then
+                        VkDescriptorBindingFlagsEXT.VkDescriptorBindingPartiallyBoundBitExt
+                    else
+                        VkDescriptorBindingFlagsEXT.None
 
                 VkDescriptorType.CombinedImageSampler,
-                ShaderUniformParameter.SamplerParameter (getSampler set binding name info)
+                partiallyBound,
+                ShaderUniformParameter.SamplerParameter sampler
             )
 
-        let buffers =
-            bindings.buffers
-            |> Seq.map (fun (KeyValue(name, binding)) ->
-                let info = binding.value
-                let set = fst binding.key.Value
-                let binding = snd binding.key.Value
+        let storageImages =
+            shaderParams.storageImages |> map (fun _ image ->
+                VkDescriptorType.StorageImage,
+                VkDescriptorBindingFlagsEXT.None,
+                ShaderUniformParameter.ImageParameter image
+            )
 
+        let uniformBuffers =
+            shaderParams.uniformBuffers |> map (fun _ buffer ->
+                VkDescriptorType.UniformBuffer,
+                VkDescriptorBindingFlagsEXT.None,
+                ShaderUniformParameter.UniformBlockParameter buffer
+            )
+
+        let storageBuffers =
+            shaderParams.storageBuffers |> map (fun _ buffer ->
                 VkDescriptorType.StorageBuffer,
-                ShaderUniformParameter.StorageBufferParameter (getBuffer set binding name info)
+                VkDescriptorBindingFlagsEXT.None,
+                ShaderUniformParameter.StorageBufferParameter buffer
+            )
+
+        let scenes =
+            shaderParams.scenes |> map (fun name (set, binding) ->
+                VkDescriptorType.AccelerationStructureNv,
+                VkDescriptorBindingFlagsEXT.None,
+                ShaderUniformParameter.AccelerationStructureParameter(string name, set, binding)
             )
 
         // TODO: Set stage flags properly
@@ -192,10 +123,10 @@ module private DummyHelpers =
             VkShaderStageFlags.IntersectionBitNv
 
         let bindings =
-            seq {scenes; uniforms; samplers; buffers}
+            seq {samplers; storageImages; uniformBuffers; storageBuffers; scenes}
                 |> Seq.concat
-                |> Seq.map (fun (typ, param) ->
-                      DescriptorSetLayoutBinding.create typ stageFlags param device
+                |> Seq.map (fun (typ, flags, param) ->
+                      DescriptorSetLayoutBinding.create typ stageFlags param flags device
                 )
                 |> Seq.sortBy (fun x -> x.Binding)
                 |> Seq.toArray
@@ -267,16 +198,19 @@ type DevicePreparedRenderObjectExtensions private() =
             ]
             |> assignBindings
 
-        // Descriptor sets
-        let descriptorSetLayout = createDescriptorSetLayout this.Device sceneBindings
-        let pipelineLayout = createPipelineLayout this.Device descriptorSetLayout.Handle
+        let shaderParams = TraceSceneShaderParams.create sceneBindings
 
         // Trace resource manager
-        let manager = new TraceResourceManager(this, scene, descriptorSetLayout.Bindings, indexPool)
-        manager.Add(fun _ -> PipelineLayout.delete pipelineLayout this.Device)
-        manager.Add(fun _ -> DescriptorSetLayout.delete descriptorSetLayout this.Device)
+        let manager = new TraceResourceManager(this, scene, shaderParams, indexPool)
         manager.Add(indexPool)
         manager.Add(shaderPool)
+
+        // Descriptor sets
+        let descriptorSetLayout = createDescriptorSetLayout this.Device manager.ShaderParams
+        manager.Add(fun _ -> DescriptorSetLayout.delete descriptorSetLayout this.Device)
+
+        let pipelineLayout = createPipelineLayout this.Device descriptorSetLayout.Handle
+        manager.Add(fun _ -> PipelineLayout.delete pipelineLayout this.Device)
 
         let descriptorSet =
             let descriptors =
@@ -301,13 +235,13 @@ type DevicePreparedRenderObjectExtensions private() =
                         Resources.AdaptiveStorageBuffer(layout.ssbBinding, manager.StorageBuffer layout.ssbName)
 
                     | SamplerParameter sampler ->
-                        failwith "Not implemented"
+                        let slots = manager.ImageSampler sampler.samplerName
+                        Resources.AdaptiveCombinedImageSampler(sampler.samplerBinding, slots)
                 )
 
             this.CreateDescriptorSet(descriptorSetLayout, descriptors)
 
-        let descriptorSetBindings = this.CreateDescriptorSetBinding(pipelineLayout, [|descriptorSet|])
-        manager.Add(descriptorSetBindings)
+        manager.Add(descriptorSet)
 
         // Pipeline
         let pipeline = this.CreateTracePipeline(pipelineLayout, 0u, shaderPool)

@@ -31,7 +31,7 @@ type IAccelerationStructureRuntime =
 
 /// An object contained in raytracing scenes
 type TraceObject(transform, anyHitShader, closestHitShader, 
-                 intersectionShader, geometry, attributes) =
+                 intersectionShader, geometry, attributes, textures) =
 
     /// The current transformation of the object
     member x.Transform : IMod<Trafo3d> = transform
@@ -56,7 +56,7 @@ type TraceObject(transform, anyHitShader, closestHitShader,
     member x.Attributes : SymbolDict<IMod> = attributes
 
     //member x.Buffers : SymbolDict<IMod<IBuffer>> = failwith ""
-    //member x.Textures : SymbolDict<IMod<ITexture>> = failwith ""
+    member x.Textures : SymbolDict<IMod<ITexture>> = textures
 
 /// Object describing a scene to be raytraced
 type TraceScene(raygenShader, missShaders, callableShaders, hitGroupShaders, objects, globals, buffers, textures) =

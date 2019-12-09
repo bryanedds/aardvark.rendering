@@ -8,6 +8,7 @@ open System.Runtime.InteropServices
 open System.Runtime.CompilerServices
 open Microsoft.FSharp.NativeInterop
 open Aardvark.Base
+open EXTDescriptorIndexing
 open KHRSwapchain
 
 #nowarn "9"
@@ -207,12 +208,27 @@ type Device internal(dev : PhysicalDevice, wantedExtensions : list<string>) as t
             let extensions = List.toArray extensions
             let! pExtensions = extensions
 
-            let features = 
-                temporary<VkPhysicalDeviceFeatures, VkPhysicalDeviceFeatures> (fun pFeatures ->
-                    VkRaw.vkGetPhysicalDeviceFeatures(physical.Handle, pFeatures)
-                    NativePtr.read pFeatures
-                )
+            let mutable features, indexingFeatures =
+                native {
+                    let mutable indexingFeatures = VkPhysicalDeviceDescriptorIndexingFeaturesEXT()
+                    indexingFeatures.sType <- VkStructureType.PhysicalDeviceDescriptorIndexingFeaturesExt
+                    indexingFeatures.pNext <- 0n
 
+                    let! pIndexingFeatures = indexingFeatures
+
+                    let! pFeatures2 =
+                        VkPhysicalDeviceFeatures2(
+                            VkStructureType.PhysicalDeviceFeatures2,
+                            NativePtr.toNativeInt pIndexingFeatures,
+                            VkPhysicalDeviceFeatures()
+                        )
+
+                    VkRaw.vkGetPhysicalDeviceFeatures2(physical.Handle, pFeatures2)
+                    let features2 = !!pFeatures2
+                    let indexingFeatures = NativeInt.read<VkPhysicalDeviceDescriptorIndexingFeaturesEXT> features2.pNext
+
+                    return (features2.features, indexingFeatures)
+                }
 
             let deviceHandles = deviceGroup |> Array.map (fun d -> d.Handle)
             let! pDevices = deviceHandles
@@ -223,8 +239,13 @@ type Device internal(dev : PhysicalDevice, wantedExtensions : list<string>) as t
                     uint32 deviceGroup.Length,
                     pDevices
                 )
-                
-            let next = if isGroup then NativePtr.toNativeInt pGroupInfo else 0n
+
+            if isGroup then
+                indexingFeatures.pNext <- NativePtr.toNativeInt pGroupInfo
+                  
+            let! pIndexingFeatures = indexingFeatures
+            let next = NativePtr.toNativeInt pIndexingFeatures
+
             let! pFeatures = features
             let! pInfo =
                 VkDeviceCreateInfo(

@@ -64,11 +64,13 @@
     <Compile Include="Swapchain\Swapchain.fs" />
     <Compile Include="Management\Raytracing\TraceSceneReader.fs" />    
     <Compile Include="Management\Raytracing\TraceSceneBindings.fs" />    
+    <Compile Include="Management\Raytracing\TraceSceneShaderParams.fs" />    
     <Compile Include="Management\Raytracing\IndexPool.fs" />    
     <Compile Include="Management\Raytracing\ShaderPool.fs" />    
     <Compile Include="Management\Raytracing\InstanceArray.fs" />    
     <Compile Include="Management\Raytracing\AttributeArray.fs" />
     <Compile Include="Management\ResourceManager.fs" />
+    <Compile Include="Management\ImageSamplerArray.fs" />
     <Compile Include="Management\TraceResourceManager.fs" />  
     <Compile Include="Management\PreparedTraceScene.fs" />
     <Compile Include="Management\PreparedRenderObject.fs" />

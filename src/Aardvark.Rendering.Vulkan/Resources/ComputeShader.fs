@@ -185,6 +185,14 @@ type InputBinding(shader : ComputeShader, sets : DescriptorSet[], references : M
                             | _ -> 
                                 failf "invalid storage image argument: %A" value
 
+                    // TODO: Do this properly, no need for options anymore
+                    let content =
+                        content
+                        |> Array.choosei (fun i x ->
+                            x |> Option.map (fun (layout, view, sampler) ->
+                                i, layout, view, sampler
+                            )
+                        )
                     
                     let write = Descriptor.CombinedImageSampler(binding, content)
                     update set binding write

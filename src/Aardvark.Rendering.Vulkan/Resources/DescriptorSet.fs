@@ -18,7 +18,7 @@ open Microsoft.FSharp.NativeInterop
 type Descriptor =
     | UniformBuffer of int * UniformBuffer
     | StorageBuffer of int * Buffer * offset : int64 * size : int64
-    | CombinedImageSampler of int * array<Option<VkImageLayout * ImageView * Sampler>>
+    | CombinedImageSampler of int * array<int * VkImageLayout * ImageView * Sampler>
     | StorageImage of int * ImageView
     | AccelerationStructure of int * TopLevelAccelerationStructure
 
@@ -146,33 +146,27 @@ module DescriptorSet =
                             |]
 
                         | CombinedImageSampler(binding, arr) ->
-                            arr |> Array.choosei (fun i vs ->
-                                match vs with
-                                    | Some(expectedLayout, view, sam) -> 
-                                        let info =
-                                            VkDescriptorImageInfo(
-                                                sam.Handle,
-                                                view.Handle,
-                                                expectedLayout
-                                            )
+                            arr |> Array.map (fun (i, expectedLayout, view, sam) ->
+                                let info =
+                                    VkDescriptorImageInfo(
+                                        sam.Handle,
+                                        view.Handle,
+                                        expectedLayout
+                                    )
 
-                                        NativePtr.write imageInfos info
-                                        let ptr = imageInfos
-                                        imageInfos <- NativePtr.step 1 imageInfos
+                                NativePtr.write imageInfos info
+                                let ptr = imageInfos
+                                imageInfos <- NativePtr.step 1 imageInfos
 
-                                        let write = 
-                                            VkWriteDescriptorSet(
-                                                VkStructureType.WriteDescriptorSet, 0n,
-                                                set.Handle,
-                                                uint32 binding,
-                                                uint32 i, 1u, VkDescriptorType.CombinedImageSampler,
-                                                ptr,
-                                                NativePtr.zero,
-                                                NativePtr.zero
-                                            )
-                                        Some write
-                                    | _ ->
-                                        None
+                                VkWriteDescriptorSet(
+                                    VkStructureType.WriteDescriptorSet, 0n,
+                                    set.Handle,
+                                    uint32 binding,
+                                    uint32 i, 1u, VkDescriptorType.CombinedImageSampler,
+                                    ptr,
+                                    NativePtr.zero,
+                                    NativePtr.zero
+                                )
                             )
 
                         | StorageImage(binding, view) ->

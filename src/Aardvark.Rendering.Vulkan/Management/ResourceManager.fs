@@ -2,6 +2,7 @@
 
 open System
 open System.Threading
+open System.Collections.Generic
 open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Rendering
@@ -435,7 +436,7 @@ module Resources =
 
     type AdaptiveDescriptor =
         | AdaptiveUniformBuffer of int * IResourceLocation<UniformBuffer>
-        | AdaptiveCombinedImageSampler of int * array<Option<IResourceLocation<ImageView> * IResourceLocation<Sampler>>>
+        | AdaptiveCombinedImageSampler of int * amap<int, IResourceLocation<ImageView * Sampler>>
         | AdaptiveStorageBuffer of int * IResourceLocation<Buffer>
         | AdaptiveStorageImage of int * IResourceLocation<ImageView>
         | AdaptiveAccelerationStructure of int * IResourceLocation<AccelerationStructure>
@@ -520,7 +521,57 @@ module Resources =
                 ieagerDestroy = true
             }
         )
-        
+
+    type ImageSamplerResource(owner : IResourceCache, key : list<obj>, device : Device,
+                              samplerType : FShade.GLSL.GLSLSamplerType, texture : IMod<ITexture>,
+                              sampler : IMod<SamplerStateDescription>) =
+        inherit AbstractResourceLocation<ImageView * Sampler>(owner, key)
+
+        let mutable handle : Option<(ITexture * SamplerStateDescription) * (Image * ImageView * Sampler)> = None
+
+        let destroy() =
+            handle |> Option.iter (fun (_, (i, v, s)) ->
+                device.Delete s; device.Delete v; device.Delete i
+            )
+            handle <- None
+
+        let create (texture : ITexture, samplerDesc : SamplerStateDescription) =
+            destroy()
+
+            let i = device.CreateImage texture
+            let v = device.CreateInputImageView(i, samplerType, VkComponentMapping.Identity)
+            let s = device.CreateSampler samplerDesc
+
+            handle <- Some ((texture, samplerDesc), (i, v, s))
+
+        override x.Create() =
+            texture.Acquire()
+            sampler.Acquire()
+
+        override x.Destroy() =
+            sampler.RemoveOutput x
+            sampler.Release()
+            texture.RemoveOutput x
+            texture.Release()
+            destroy()
+
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+                let n = texture.GetValue token, sampler.GetValue token
+
+                match handle with
+                | Some(o,_) when not (Unchecked.equals o n) ->
+                    owner.ReplaceLocked (Some o, Some n)
+                    create n
+                | None ->
+                    owner.ReplaceLocked (None, Some n)
+                    create n
+                | _ ->
+                    ()
+
+            match handle with
+            | Some (_, (_, v, s)) -> { handle = (v, s); version = 0 }
+            | _ -> failwith "[Resource] inconsistent state"
 
     type ShaderProgramEffectResource(owner : IResourceCache, key : list<obj>, device : Device, layout : PipelineLayout, input : IMod<FShade.Imperative.Module>) =
         inherit ImmutableResourceLocation<FShade.Imperative.Module, ShaderProgram>(
@@ -742,14 +793,30 @@ module Resources =
 
         let mutable state = [||]
         let device = layout.Device
+
+        // For each binding we store a reader along side a dictionary that sparsely maps resources
+        // to a slot within that binding
+        let imageSamplers = Dictionary<int, _ * Dictionary<int, IResourceLocation<'a>>>()
+
+        // Remove a resource from the given dictionary if it exists
+        let remove (i : int) (slots : Dictionary<int, IResourceLocation<'a>>) =
+            match slots.TryGetValue i with
+            | true, x ->
+                slots.Remove i |> ignore
+                x.Release()
+            | _ -> ()
+
+        // Add a resource to the given dictionary
+        let set (i : int) (r : IResourceLocation<'a>) (slots : Dictionary<int, IResourceLocation<'a>>) =
+            r.Acquire()
+            slots |> remove i
+            slots.[i] <- r
+
         override x.Create() =
             for b in bindings do
                 match b with
-                    | AdaptiveCombinedImageSampler(_,arr) ->
-                        for a in arr do
-                            match a with
-                                | Some (i,s) -> i.Acquire(); s.Acquire()
-                                | None -> ()
+                    | AdaptiveCombinedImageSampler(binding, map) ->
+                        imageSamplers.[binding] <- (map.GetReader(), Dictionary())
 
                     | AdaptiveStorageBuffer(_,b) ->
                         b.Acquire()
@@ -766,14 +833,16 @@ module Resources =
             ()
 
         override x.Destroy() =
+            for (reader, slots) in imageSamplers.Values do
+                reader.Dispose()
+
+                for r in slots.Values do
+                    r.Release()
+
             for b in bindings do
                 match b with
-                    | AdaptiveCombinedImageSampler(_,arr) ->
-                        for a in arr do
-                            match a with
-                                | Some (i,s) -> i.Release(); s.Release()
-                                | None -> ()
-                                
+                    | AdaptiveCombinedImageSampler _ ->
+                        ()
                     | AdaptiveStorageImage(_,v) ->
                         v.Release()
                     | AdaptiveStorageBuffer(_,b) ->
@@ -791,6 +860,14 @@ module Resources =
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then
+
+                for (reader, slots) in imageSamplers.Values do
+                    let deltas = reader.GetOperations token
+
+                    for (i, op) in deltas do
+                        match op with
+                        | Set r -> slots |> set i r
+                        | Remove -> slots |> remove i
                 
                 let bindings =
                     bindings |> Array.map (fun b ->
@@ -811,14 +888,15 @@ module Resources =
                                 let buffer = b.Update(token).handle
                                 StorageBuffer(slot, buffer, 0L, buffer.Size)
 
-                            | AdaptiveCombinedImageSampler(slot, arr) ->
+                            | AdaptiveCombinedImageSampler(slot, _) ->
+                                let (_, slots) = imageSamplers.[slot]
+
                                 let arr =
-                                    arr |> Array.map (fun o ->
-                                        match o with
-                                            | Some(s,i) ->
-                                                Some(VkImageLayout.ShaderReadOnlyOptimal, s.Update(token).handle, i.Update(token).handle)
-                                            | None ->
-                                                None
+                                    slots
+                                    |> Dictionary.toArray
+                                    |> Array.map (fun (i, r) ->
+                                        let (v, s) = r.Update(token).handle
+                                        i, VkImageLayout.ShaderReadOnlyOptimal, v, s
                                     )
 
                                 CombinedImageSampler(slot, arr)
@@ -1367,6 +1445,7 @@ type ResourceManager(user : IResourceUser, device : Device) =
     let imageCache              = ResourceLocationCache<Image>(user)
     let imageViewCache          = ResourceLocationCache<ImageView>(user)
     let samplerCache            = ResourceLocationCache<Sampler>(user)
+    let imageSamplerCache       = ResourceLocationCache<ImageView * Sampler>(user)
     let programCache            = ResourceLocationCache<ShaderProgram>(user)
     let simpleSurfaceCache      = System.Collections.Concurrent.ConcurrentDictionary<obj, ShaderProgram>()
     let fshadeThingCache        = System.Collections.Concurrent.ConcurrentDictionary<obj, PipelineLayout * IMod<FShade.Imperative.Module>>()
@@ -1414,6 +1493,7 @@ type ResourceManager(user : IResourceUser, device : Device) =
         imageCache.Clear()
         imageViewCache.Clear()
         samplerCache.Clear()
+        imageSamplerCache.Clear()
         programCache.Clear()
 
         vertexInputCache.Clear()
@@ -1461,6 +1541,13 @@ type ResourceManager(user : IResourceUser, device : Device) =
         
     member x.CreateSampler(data : IMod<SamplerStateDescription>) =
         samplerCache.GetOrCreate([data :> obj], fun cache key -> new SamplerResource(cache, key, device, data))
+
+    member x.CreateImageSampler(samplerType : FShade.GLSL.GLSLSamplerType,
+                                texture : IMod<ITexture>, samplerDesc : IMod<SamplerStateDescription>) =
+        imageSamplerCache.GetOrCreate(
+            [samplerType :> obj; texture :> obj; samplerDesc :> obj],
+            fun cache key -> new ImageSamplerResource(cache, key, device, samplerType, texture, samplerDesc)
+        )
         
     member x.CreateShaderProgram(data : ISurface) =
         let programKey = (data) :> obj
