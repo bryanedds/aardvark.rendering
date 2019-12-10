@@ -77,6 +77,7 @@ type VkExternalSemaphoreHandleTypeFlagsKHR = | MinValue = 0
 type VkExternalMemoryFeatureFlagsKHR = | MinValue = 0
 type VkExternalFenceFeatureFlagsKHR = | MinValue = 0
 type VkExternalSemaphoreFeatureFlagsKHR = | MinValue = 0
+type VkAcquireProfilingLockFlagsKHR = | MinValue = 0
 type VkIOSSurfaceCreateFlagsMVK = | MinValue = 0
 type VkFenceImportFlagsKHR = | MinValue = 0
 type VkSemaphoreImportFlagsKHR = | MinValue = 0
@@ -1188,6 +1189,7 @@ type VkImageCreateFlags =
 type VkPipelineCreateFlags = 
     | None = 0
     | DispatchBase = 0x00000010
+    | DispatchBaseBit = 0x00000010
     | ViewIndexFromDeviceIndexBit = 0x00000008
     | DisableOptimizationBit = 0x00000001
     | AllowDerivativesBit = 0x00000002
@@ -1365,62 +1367,62 @@ type VkDependencyFlags =
     | ByRegionBit = 0x00000001
 
 type VkPresentModeKHR = 
-    | VkPresentModeImmediateKhr = 0
-    | VkPresentModeMailboxKhr = 1
-    | VkPresentModeFifoKhr = 2
-    | VkPresentModeFifoRelaxedKhr = 3
+    | Immediate = 0
+    | Mailbox = 1
+    | Fifo = 2
+    | FifoRelaxed = 3
 
 type VkColorSpaceKHR = 
-    | VkColorSpaceSrgbNonlinearKhr = 0
-    | VkColorspaceSrgbNonlinearKhr = 0
+    | SrgbNonlinear = 0
+    | VkColorspaceSrgbNonlinear = 0
 
 [<Flags>]
 type VkCompositeAlphaFlagsKHR = 
     | None = 0
-    | VkCompositeAlphaOpaqueBitKhr = 0x00000001
-    | VkCompositeAlphaPreMultipliedBitKhr = 0x00000002
-    | VkCompositeAlphaPostMultipliedBitKhr = 0x00000004
-    | VkCompositeAlphaInheritBitKhr = 0x00000008
+    | OpaqueBit = 0x00000001
+    | PreMultipliedBit = 0x00000002
+    | PostMultipliedBit = 0x00000004
+    | InheritBit = 0x00000008
 
 [<Flags>]
 type VkSurfaceTransformFlagsKHR = 
     | None = 0
-    | VkSurfaceTransformIdentityBitKhr = 0x00000001
-    | VkSurfaceTransformRotate90BitKhr = 0x00000002
-    | VkSurfaceTransformRotate180BitKhr = 0x00000004
-    | VkSurfaceTransformRotate270BitKhr = 0x00000008
-    | VkSurfaceTransformHorizontalMirrorBitKhr = 0x00000010
-    | VkSurfaceTransformHorizontalMirrorRotate90BitKhr = 0x00000020
-    | VkSurfaceTransformHorizontalMirrorRotate180BitKhr = 0x00000040
-    | VkSurfaceTransformHorizontalMirrorRotate270BitKhr = 0x00000080
-    | VkSurfaceTransformInheritBitKhr = 0x00000100
+    | IdentityBit = 0x00000001
+    | Rotate90Bit = 0x00000002
+    | Rotate180Bit = 0x00000004
+    | Rotate270Bit = 0x00000008
+    | HorizontalMirrorBit = 0x00000010
+    | HorizontalMirrorRotate90Bit = 0x00000020
+    | HorizontalMirrorRotate180Bit = 0x00000040
+    | HorizontalMirrorRotate270Bit = 0x00000080
+    | InheritBit = 0x00000100
 
 [<Flags>]
 type VkDebugReportFlagsEXT = 
     | None = 0
-    | VkDebugReportInformationBitExt = 0x00000001
-    | VkDebugReportWarningBitExt = 0x00000002
-    | VkDebugReportPerformanceWarningBitExt = 0x00000004
-    | VkDebugReportErrorBitExt = 0x00000008
-    | VkDebugReportDebugBitExt = 0x00000010
+    | InformationBit = 0x00000001
+    | WarningBit = 0x00000002
+    | PerformanceWarningBit = 0x00000004
+    | ErrorBit = 0x00000008
+    | DebugBit = 0x00000010
 
 type VkValidationCheckEXT = 
-    | VkValidationCheckAllExt = 0
-    | VkValidationCheckShadersExt = 1
+    | All = 0
+    | Shaders = 1
 
 type VkValidationFeatureEnableEXT = 
-    | VkValidationFeatureEnableGpuAssistedExt = 0
-    | VkValidationFeatureEnableGpuAssistedReserveBindingSlotExt = 1
-    | VkValidationFeatureEnableBestPracticesExt = 2
+    | GpuAssisted = 0
+    | GpuAssistedReserveBindingSlot = 1
+    | BestPractices = 2
 
 type VkValidationFeatureDisableEXT = 
-    | VkValidationFeatureDisableAllExt = 0
-    | VkValidationFeatureDisableShadersExt = 1
-    | VkValidationFeatureDisableThreadSafetyExt = 2
-    | VkValidationFeatureDisableApiParametersExt = 3
-    | VkValidationFeatureDisableObjectLifetimesExt = 4
-    | VkValidationFeatureDisableCoreChecksExt = 5
-    | VkValidationFeatureDisableUniqueHandlesExt = 6
+    | All = 0
+    | Shaders = 1
+    | ThreadSafety = 2
+    | ApiParameters = 3
+    | ObjectLifetimes = 4
+    | CoreChecks = 5
+    | UniqueHandles = 6
 
 [<Flags>]
 type VkSubgroupFeatureFlags = 
@@ -1507,10 +1509,10 @@ type VkMemoryAllocateFlags =
 [<Flags>]
 type VkDeviceGroupPresentModeFlagsKHR = 
     | None = 0
-    | VkDeviceGroupPresentModeLocalBitKhr = 0x00000001
-    | VkDeviceGroupPresentModeRemoteBitKhr = 0x00000002
-    | VkDeviceGroupPresentModeSumBitKhr = 0x00000004
-    | VkDeviceGroupPresentModeLocalMultiDeviceBitKhr = 0x00000008
+    | LocalBit = 0x00000001
+    | RemoteBit = 0x00000002
+    | SumBit = 0x00000004
+    | LocalMultiDeviceBit = 0x00000008
 
 type VkPointClippingBehavior = 
     | AllClipPlanes = 0
@@ -1538,25 +1540,25 @@ type VkChromaLocation =
 [<Flags>]
 type VkDebugUtilsMessageSeverityFlagsEXT = 
     | None = 0
-    | VkDebugUtilsMessageSeverityVerboseBitExt = 0x00000001
-    | VkDebugUtilsMessageSeverityInfoBitExt = 0x00000010
-    | VkDebugUtilsMessageSeverityWarningBitExt = 0x00000100
-    | VkDebugUtilsMessageSeverityErrorBitExt = 0x00001000
+    | VerboseBit = 0x00000001
+    | InfoBit = 0x00000010
+    | WarningBit = 0x00000100
+    | ErrorBit = 0x00001000
 
 [<Flags>]
 type VkDebugUtilsMessageTypeFlagsEXT = 
     | None = 0
-    | VkDebugUtilsMessageTypeGeneralBitExt = 0x00000001
-    | VkDebugUtilsMessageTypeValidationBitExt = 0x00000002
-    | VkDebugUtilsMessageTypePerformanceBitExt = 0x00000004
+    | GeneralBit = 0x00000001
+    | ValidationBit = 0x00000002
+    | PerformanceBit = 0x00000004
 
 [<Flags>]
 type VkDescriptorBindingFlagsEXT = 
     | None = 0
-    | VkDescriptorBindingUpdateAfterBindBitExt = 0x00000001
-    | VkDescriptorBindingUpdateUnusedWhilePendingBitExt = 0x00000002
-    | VkDescriptorBindingPartiallyBoundBitExt = 0x00000004
-    | VkDescriptorBindingVariableDescriptorCountBitExt = 0x00000008
+    | UpdateAfterBindBit = 0x00000001
+    | UpdateUnusedWhilePendingBit = 0x00000002
+    | PartiallyBoundBit = 0x00000004
+    | VariableDescriptorCountBit = 0x00000008
 
 type VkVendorId = 
     | Viv = 65537
@@ -8970,42 +8972,42 @@ module EXTDebugReport =
     let Number = 12
     
     type VkDebugReportObjectTypeEXT = 
-        | VkDebugReportObjectTypeUnknownExt = 0
-        | VkDebugReportObjectTypeInstanceExt = 1
-        | VkDebugReportObjectTypePhysicalDeviceExt = 2
-        | VkDebugReportObjectTypeDeviceExt = 3
-        | VkDebugReportObjectTypeQueueExt = 4
-        | VkDebugReportObjectTypeSemaphoreExt = 5
-        | VkDebugReportObjectTypeCommandBufferExt = 6
-        | VkDebugReportObjectTypeFenceExt = 7
-        | VkDebugReportObjectTypeDeviceMemoryExt = 8
-        | VkDebugReportObjectTypeBufferExt = 9
-        | VkDebugReportObjectTypeImageExt = 10
-        | VkDebugReportObjectTypeEventExt = 11
-        | VkDebugReportObjectTypeQueryPoolExt = 12
-        | VkDebugReportObjectTypeBufferViewExt = 13
-        | VkDebugReportObjectTypeImageViewExt = 14
-        | VkDebugReportObjectTypeShaderModuleExt = 15
-        | VkDebugReportObjectTypePipelineCacheExt = 16
-        | VkDebugReportObjectTypePipelineLayoutExt = 17
-        | VkDebugReportObjectTypeRenderPassExt = 18
-        | VkDebugReportObjectTypePipelineExt = 19
-        | VkDebugReportObjectTypeDescriptorSetLayoutExt = 20
-        | VkDebugReportObjectTypeSamplerExt = 21
-        | VkDebugReportObjectTypeDescriptorPoolExt = 22
-        | VkDebugReportObjectTypeDescriptorSetExt = 23
-        | VkDebugReportObjectTypeFramebufferExt = 24
-        | VkDebugReportObjectTypeCommandPoolExt = 25
-        | VkDebugReportObjectTypeSurfaceKhrExt = 26
-        | VkDebugReportObjectTypeSwapchainKhrExt = 27
-        | VkDebugReportObjectTypeDebugReportCallbackExtExt = 28
-        | VkDebugReportObjectTypeDebugReportExt = 28
-        | VkDebugReportObjectTypeDisplayKhrExt = 29
-        | VkDebugReportObjectTypeDisplayModeKhrExt = 30
-        | VkDebugReportObjectTypeObjectTableNvxExt = 31
-        | VkDebugReportObjectTypeIndirectCommandsLayoutNvxExt = 32
-        | VkDebugReportObjectTypeValidationCacheExtExt = 33
-        | VkDebugReportObjectTypeValidationCacheExt = 33
+        | Unknown = 0
+        | Instance = 1
+        | PhysicalDevice = 2
+        | Device = 3
+        | Queue = 4
+        | Semaphore = 5
+        | CommandBuffer = 6
+        | Fence = 7
+        | DeviceMemory = 8
+        | Buffer = 9
+        | Image = 10
+        | Event = 11
+        | QueryPool = 12
+        | BufferView = 13
+        | ImageView = 14
+        | ShaderModule = 15
+        | PipelineCache = 16
+        | PipelineLayout = 17
+        | RenderPass = 18
+        | Pipeline = 19
+        | DescriptorSetLayout = 20
+        | Sampler = 21
+        | DescriptorPool = 22
+        | DescriptorSet = 23
+        | Framebuffer = 24
+        | CommandPool = 25
+        | SurfaceKhr = 26
+        | SwapchainKhr = 27
+        | DebugReportCallbackExt = 28
+        | DebugReport = 28
+        | DisplayKhr = 29
+        | DisplayModeKhr = 30
+        | ObjectTableNvx = 31
+        | IndirectCommandsLayoutNvx = 32
+        | ValidationCacheExt = 33
+        | ValidationCache = 33
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -9202,6 +9204,8 @@ module KHRGetSurfaceCapabilities2 =
     let Name = "VK_KHR_get_surface_capabilities2"
     let Number = 120
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -9305,6 +9309,8 @@ module KHRSwapchain =
     let Name = "VK_KHR_swapchain"
     let Number = 2
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -9357,6 +9363,10 @@ module AMDDisplayNativeHdr =
     let Name = "VK_AMD_display_native_hdr"
     let Number = 214
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name; KHRGetSurfaceCapabilities2.Name; KHRSwapchain.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open KHRGetSurfaceCapabilities2
+    open KHRSwapchain
     open EXTDebugReport
     
     
@@ -9533,9 +9543,9 @@ module AMDMemoryOverallocationBehavior =
     open EXTDebugReport
     
     type VkMemoryOverallocationBehaviorAMD = 
-        | VkMemoryOverallocationBehaviorDefaultAmd = 0
-        | VkMemoryOverallocationBehaviorAllowedAmd = 1
-        | VkMemoryOverallocationBehaviorDisallowedAmd = 2
+        | Default = 0
+        | Allowed = 1
+        | Disallowed = 2
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -9630,8 +9640,8 @@ module AMDRasterizationOrder =
     open EXTDebugReport
     
     type VkRasterizationOrderAMD = 
-        | VkRasterizationOrderStrictAmd = 0
-        | VkRasterizationOrderRelaxedAmd = 1
+        | Strict = 0
+        | Relaxed = 1
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -9677,6 +9687,8 @@ module AMDShaderCoreProperties =
     let Name = "VK_AMD_shader_core_properties"
     let Number = 186
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -9765,6 +9777,8 @@ module AMDShaderCoreProperties2 =
     let Name = "VK_AMD_shader_core_properties2"
     let Number = 228
     
+    let Required = [ AMDShaderCoreProperties.Name ]
+    open AMDShaderCoreProperties
     open EXTDebugReport
     
     
@@ -9838,9 +9852,9 @@ module AMDShaderInfo =
     open EXTDebugReport
     
     type VkShaderInfoTypeAMD = 
-        | VkShaderInfoTypeStatisticsAmd = 0
-        | VkShaderInfoTypeBinaryAmd = 1
-        | VkShaderInfoTypeDisassemblyAmd = 2
+        | Statistics = 0
+        | Binary = 1
+        | Disassembly = 2
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -9944,6 +9958,8 @@ module AMDTextureGatherBiasLod =
     let Name = "VK_AMD_texture_gather_bias_lod"
     let Number = 42
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -10017,6 +10033,11 @@ module KHRSamplerYcbcrConversion =
     let Name = "VK_KHR_sampler_ycbcr_conversion"
     let Number = 157
     
+    let Required = [ KHRBindMemory2.Name; KHRGetMemoryRequirements2.Name; KHRGetPhysicalDeviceProperties2.Name; KHRMaintenance1.Name ]
+    open KHRBindMemory2
+    open KHRGetMemoryRequirements2
+    open KHRGetPhysicalDeviceProperties2
+    open KHRMaintenance1
     open EXTDebugReport
     
     
@@ -10040,6 +10061,8 @@ module KHRExternalMemoryCapabilities =
     let Name = "VK_KHR_external_memory_capabilities"
     let Number = 72
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -10056,6 +10079,8 @@ module KHRExternalMemory =
     let Name = "VK_KHR_external_memory"
     let Number = 73
     
+    let Required = [ KHRExternalMemoryCapabilities.Name ]
+    open KHRExternalMemoryCapabilities
     open EXTDebugReport
     
     
@@ -10069,6 +10094,8 @@ module EXTQueueFamilyForeign =
     let Name = "VK_EXT_queue_family_foreign"
     let Number = 127
     
+    let Required = [ KHRExternalMemory.Name ]
+    open KHRExternalMemory
     open EXTDebugReport
     
     
@@ -10079,6 +10106,10 @@ module ANDROIDExternalMemoryAndroidHardwareBuffer =
     let Name = "VK_ANDROID_external_memory_android_hardware_buffer"
     let Number = 130
     
+    let Required = [ EXTQueueFamilyForeign.Name; KHRExternalMemory.Name; KHRSamplerYcbcrConversion.Name ]
+    open EXTQueueFamilyForeign
+    open KHRExternalMemory
+    open KHRSamplerYcbcrConversion
     open EXTDebugReport
     
     
@@ -10296,7 +10327,7 @@ module ANDROIDNativeBuffer =
     [<Flags>]
     type VkSwapchainImageUsageFlagsANDROID = 
         | None = 0
-        | VkSwapchainImageUsageSharedBitAndroid = 0x00000001
+        | SharedBit = 0x00000001
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -10445,15 +10476,17 @@ module KHRDisplay =
     let Name = "VK_KHR_display"
     let Number = 3
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     [<Flags>]
     type VkDisplayPlaneAlphaFlagsKHR = 
         | None = 0
-        | VkDisplayPlaneAlphaOpaqueBitKhr = 0x00000001
-        | VkDisplayPlaneAlphaGlobalBitKhr = 0x00000002
-        | VkDisplayPlaneAlphaPerPixelBitKhr = 0x00000004
-        | VkDisplayPlaneAlphaPerPixelPremultipliedBitKhr = 0x00000008
+        | OpaqueBit = 0x00000001
+        | GlobalBit = 0x00000002
+        | PerPixelBit = 0x00000004
+        | PerPixelPremultipliedBit = 0x00000008
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -10739,6 +10772,8 @@ module EXTDirectModeDisplay =
     let Name = "VK_EXT_direct_mode_display"
     let Number = 89
     
+    let Required = [ KHRDisplay.Name ]
+    open KHRDisplay
     open EXTDebugReport
     
     
@@ -10761,6 +10796,8 @@ module EXTAcquireXlibDisplay =
     let Name = "VK_EXT_acquire_xlib_display"
     let Number = 90
     
+    let Required = [ EXTDirectModeDisplay.Name ]
+    open EXTDirectModeDisplay
     open EXTDebugReport
     
     
@@ -10788,6 +10825,8 @@ module EXTAstcDecodeMode =
     let Name = "VK_EXT_astc_decode_mode"
     let Number = 68
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -10852,9 +10891,9 @@ module EXTBlendOperationAdvanced =
     open EXTDebugReport
     
     type VkBlendOverlapEXT = 
-        | VkBlendOverlapUncorrelatedExt = 0
-        | VkBlendOverlapDisjointExt = 1
-        | VkBlendOverlapConjointExt = 2
+        | Uncorrelated = 0
+        | Disjoint = 1
+        | Conjoint = 2
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -11017,6 +11056,8 @@ module EXTBufferDeviceAddress =
     let Name = "VK_EXT_buffer_device_address"
     let Number = 245
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -11044,30 +11085,7 @@ module EXTBufferDeviceAddress =
                 ] |> sprintf "VkBufferDeviceAddressCreateInfoEXT { %s }"
         end
     
-    [<StructLayout(LayoutKind.Sequential)>]
-    type VkBufferDeviceAddressInfoEXT = 
-        struct
-            val mutable public sType : VkStructureType
-            val mutable public pNext : nativeint
-            val mutable public buffer : VkBuffer
-    
-            new(sType : VkStructureType
-              , pNext : nativeint
-              , buffer : VkBuffer
-              ) =
-                {
-                    sType = sType
-                    pNext = pNext
-                    buffer = buffer
-                }
-            override x.ToString() =
-                String.concat "; " [
-                    sprintf "sType = %A" x.sType
-                    sprintf "pNext = %A" x.pNext
-                    sprintf "buffer = %A" x.buffer
-                ] |> sprintf "VkBufferDeviceAddressInfoEXT { %s }"
-        end
-    
+    type VkBufferDeviceAddressInfoEXT = VkBufferDeviceAddressInfoKHR
     type VkPhysicalDeviceBufferAddressFeaturesEXT = VkPhysicalDeviceBufferDeviceAddressFeaturesEXT
     [<StructLayout(LayoutKind.Sequential)>]
     type VkPhysicalDeviceBufferDeviceAddressFeaturesEXT = 
@@ -11102,29 +11120,10 @@ module EXTBufferDeviceAddress =
         end
     
     
-    type VkBufferCreateFlags with
-         static member inline DeviceAddressCaptureReplayBitExt = unbox<VkBufferCreateFlags> 16
-    type VkBufferUsageFlags with
-         static member inline ShaderDeviceAddressBitExt = unbox<VkBufferUsageFlags> 131072
-    type VkResult with
-         static member inline VkErrorInvalidDeviceAddressExt = unbox<VkResult> -1000244000
     type VkStructureType with
          static member inline PhysicalDeviceBufferDeviceAddressFeaturesExt = unbox<VkStructureType> 1000244000
-         static member inline BufferDeviceAddressInfoExt = unbox<VkStructureType> 1000244001
          static member inline BufferDeviceAddressCreateInfoExt = unbox<VkStructureType> 1000244002
     
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module VkRaw =
-        [<SuppressUnmanagedCodeSecurity>]
-        type VkGetBufferDeviceAddressEXTDel = delegate of VkDevice * nativeptr<VkBufferDeviceAddressInfoEXT> -> VkDeviceAddress
-        
-        [<AbstractClass; Sealed>]
-        type private Loader<'d> private() =
-            static do Report.Begin(3, "[Vulkan] loading VK_EXT_buffer_device_address")
-            static let s_vkGetBufferDeviceAddressEXTDel = VkRaw.vkImportInstanceDelegate<VkGetBufferDeviceAddressEXTDel> "vkGetBufferDeviceAddressEXT"
-            static do Report.End(3) |> ignore
-            static member vkGetBufferDeviceAddressEXT = s_vkGetBufferDeviceAddressEXTDel
-        let vkGetBufferDeviceAddressEXT(device : VkDevice, pInfo : nativeptr<VkBufferDeviceAddressInfoEXT>) = Loader<unit>.vkGetBufferDeviceAddressEXT.Invoke(device, pInfo)
 
 module EXTCalibratedTimestamps =
     let Name = "VK_EXT_calibrated_timestamps"
@@ -11133,10 +11132,10 @@ module EXTCalibratedTimestamps =
     open EXTDebugReport
     
     type VkTimeDomainEXT = 
-        | VkTimeDomainDeviceExt = 0
-        | VkTimeDomainClockMonotonicExt = 1
-        | VkTimeDomainClockMonotonicRawExt = 2
-        | VkTimeDomainQueryPerformanceCounterExt = 3
+        | Device = 0
+        | ClockMonotonic = 1
+        | ClockMonotonicRaw = 2
+        | QueryPerformanceCounter = 3
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -11194,7 +11193,7 @@ module EXTConditionalRendering =
     [<Flags>]
     type VkConditionalRenderingFlagsEXT = 
         | None = 0
-        | VkConditionalRenderingInvertedBitExt = 0x00000001
+        | InvertedBit = 0x00000001
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -11315,12 +11314,14 @@ module EXTConservativeRasterization =
     let Name = "VK_EXT_conservative_rasterization"
     let Number = 102
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     type VkConservativeRasterizationModeEXT = 
-        | VkConservativeRasterizationModeDisabledExt = 0
-        | VkConservativeRasterizationModeOverestimateExt = 1
-        | VkConservativeRasterizationModeUnderestimateExt = 2
+        | Disabled = 0
+        | Overestimate = 1
+        | Underestimate = 2
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -11421,6 +11422,8 @@ module EXTDebugMarker =
     let Name = "VK_EXT_debug_marker"
     let Number = 23
     
+    let Required = [ EXTDebugReport.Name ]
+    open EXTDebugReport
     open EXTDebugReport
     
     
@@ -11922,6 +11925,8 @@ module KHRMaintenance3 =
     let Name = "VK_KHR_maintenance3"
     let Number = 169
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -11934,6 +11939,9 @@ module EXTDescriptorIndexing =
     let Name = "VK_EXT_descriptor_indexing"
     let Number = 162
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name; KHRMaintenance3.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open KHRMaintenance3
     open EXTDebugReport
     
     
@@ -12248,11 +12256,13 @@ module EXTDiscardRectangles =
     let Name = "VK_EXT_discard_rectangles"
     let Number = 100
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     type VkDiscardRectangleModeEXT = 
-        | VkDiscardRectangleModeInclusiveExt = 0
-        | VkDiscardRectangleModeExclusiveExt = 1
+        | Inclusive = 0
+        | Exclusive = 1
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -12339,12 +12349,14 @@ module EXTDisplaySurfaceCounter =
     let Name = "VK_EXT_display_surface_counter"
     let Number = 91
     
+    let Required = [ KHRDisplay.Name ]
+    open KHRDisplay
     open EXTDebugReport
     
     [<Flags>]
     type VkSurfaceCounterFlagsEXT = 
         | None = 0
-        | VkSurfaceCounterVblankExt = 0x00000001
+        | Vblank = 0x00000001
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -12432,18 +12444,21 @@ module EXTDisplayControl =
     let Name = "VK_EXT_display_control"
     let Number = 92
     
+    let Required = [ EXTDisplaySurfaceCounter.Name; KHRSwapchain.Name ]
+    open EXTDisplaySurfaceCounter
+    open KHRSwapchain
     open EXTDebugReport
     
     type VkDisplayPowerStateEXT = 
-        | VkDisplayPowerStateOffExt = 0
-        | VkDisplayPowerStateSuspendExt = 1
-        | VkDisplayPowerStateOnExt = 2
+        | Off = 0
+        | Suspend = 1
+        | On = 2
     
     type VkDeviceEventTypeEXT = 
-        | VkDeviceEventTypeDisplayHotplugExt = 0
+        | DisplayHotplug = 0
     
     type VkDisplayEventTypeEXT = 
-        | VkDisplayEventTypeFirstPixelOutExt = 0
+        | FirstPixelOut = 0
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -12577,10 +12592,28 @@ module EXTDisplayControl =
         let vkRegisterDisplayEventEXT(device : VkDevice, display : VkDisplayKHR, pDisplayEventInfo : nativeptr<VkDisplayEventInfoEXT>, pAllocator : nativeptr<VkAllocationCallbacks>, pFence : nativeptr<VkFence>) = Loader<unit>.vkRegisterDisplayEventEXT.Invoke(device, display, pDisplayEventInfo, pAllocator, pFence)
         let vkGetSwapchainCounterEXT(device : VkDevice, swapchain : VkSwapchainKHR, counter : VkSurfaceCounterFlagsEXT, pCounterValue : nativeptr<uint64>) = Loader<unit>.vkGetSwapchainCounterEXT.Invoke(device, swapchain, counter, pCounterValue)
 
+module EXTExtension298 =
+    let Name = "VK_EXT_extension_298"
+    let Number = 298
+    
+    open EXTDebugReport
+    
+    
+    
+    type VkPipelineCreateFlags with
+         static member inline Reserved8BitExt = unbox<VkPipelineCreateFlags> 256
+         static member inline Reserved9BitExt = unbox<VkPipelineCreateFlags> 512
+         static member inline Reserved10BitExt = unbox<VkPipelineCreateFlags> 1024
+    type VkResult with
+         static member inline Ext298ReservedValue0Ext = unbox<VkResult> 1000297000
+    
+
 module KHRExternalMemoryFd =
     let Name = "VK_KHR_external_memory_fd"
     let Number = 75
     
+    let Required = [ KHRExternalMemory.Name ]
+    open KHRExternalMemory
     open EXTDebugReport
     
     
@@ -12692,6 +12725,8 @@ module EXTExternalMemoryDmaBuf =
     let Name = "VK_EXT_external_memory_dma_buf"
     let Number = 126
     
+    let Required = [ KHRExternalMemoryFd.Name ]
+    open KHRExternalMemoryFd
     open EXTDebugReport
     
     
@@ -12704,6 +12739,8 @@ module EXTExternalMemoryHost =
     let Name = "VK_EXT_external_memory_host"
     let Number = 179
     
+    let Required = [ KHRExternalMemory.Name ]
+    open KHRExternalMemory
     open EXTDebugReport
     
     
@@ -12823,6 +12860,8 @@ module EXTFilterCubic =
     let Name = "VK_EXT_filter_cubic"
     let Number = 171
     
+    let Required = [ IMGFilterCubic.Name ]
+    open IMGFilterCubic
     open EXTDebugReport
     
     
@@ -12888,6 +12927,8 @@ module EXTFragmentDensityMap =
     let Name = "VK_EXT_fragment_density_map"
     let Number = 219
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -13007,6 +13048,8 @@ module EXTFragmentShaderInterlock =
     let Name = "VK_EXT_fragment_shader_interlock"
     let Number = 252
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -13051,14 +13094,18 @@ module EXTFullScreenExclusive =
     let Name = "VK_EXT_full_screen_exclusive"
     let Number = 256
     
-    open EXTDebugReport
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name; KHRGetSurfaceCapabilities2.Name; KHRSurface.Name; KHRSwapchain.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open KHRGetSurfaceCapabilities2
-
+    open KHRSurface
+    open KHRSwapchain
+    open EXTDebugReport
+    
     type VkFullScreenExclusiveEXT = 
-        | VkFullScreenExclusiveDefaultExt = 0
-        | VkFullScreenExclusiveAllowedExt = 1
-        | VkFullScreenExclusiveDisallowedExt = 2
-        | VkFullScreenExclusiveApplicationControlledExt = 3
+        | Default = 0
+        | Allowed = 1
+        | Disallowed = 2
+        | ApplicationControlled = 3
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -13198,10 +13245,10 @@ module EXTGlobalPriority =
     open EXTDebugReport
     
     type VkQueueGlobalPriorityEXT = 
-        | VkQueueGlobalPriorityLowExt = 128
-        | VkQueueGlobalPriorityMediumExt = 256
-        | VkQueueGlobalPriorityHighExt = 512
-        | VkQueueGlobalPriorityRealtimeExt = 1024
+        | Low = 128
+        | Medium = 256
+        | High = 512
+        | Realtime = 1024
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -13239,6 +13286,8 @@ module EXTHdrMetadata =
     let Name = "VK_EXT_hdr_metadata"
     let Number = 106
     
+    let Required = [ KHRSwapchain.Name ]
+    open KHRSwapchain
     open EXTDebugReport
     
     
@@ -13335,6 +13384,8 @@ module EXTHeadlessSurface =
     let Name = "VK_EXT_headless_surface"
     let Number = 257
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -13383,6 +13434,8 @@ module EXTHostQueryReset =
     let Name = "VK_EXT_host_query_reset"
     let Number = 262
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -13471,6 +13524,11 @@ module EXTImageDrmFormatModifier =
     let Name = "VK_EXT_image_drm_format_modifier"
     let Number = 159
     
+    let Required = [ KHRBindMemory2.Name; KHRGetPhysicalDeviceProperties2.Name; KHRImageFormatList.Name; KHRSamplerYcbcrConversion.Name ]
+    open KHRBindMemory2
+    open KHRGetPhysicalDeviceProperties2
+    open KHRImageFormatList
+    open KHRSamplerYcbcrConversion
     open EXTDebugReport
     
     
@@ -13719,6 +13777,9 @@ module EXTInlineUniformBlock =
     let Name = "VK_EXT_inline_uniform_block"
     let Number = 139
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name; KHRMaintenance1.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open KHRMaintenance1
     open EXTDebugReport
     
     
@@ -13856,13 +13917,15 @@ module EXTLineRasterization =
     let Name = "VK_EXT_line_rasterization"
     let Number = 260
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     type VkLineRasterizationModeEXT = 
-        | VkLineRasterizationModeDefaultExt = 0
-        | VkLineRasterizationModeRectangularExt = 1
-        | VkLineRasterizationModeBresenhamExt = 2
-        | VkLineRasterizationModeRectangularSmoothExt = 3
+        | Default = 0
+        | Rectangular = 1
+        | Bresenham = 2
+        | RectangularSmooth = 3
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -13994,6 +14057,8 @@ module EXTMemoryBudget =
     let Name = "VK_EXT_memory_budget"
     let Number = 238
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -14034,6 +14099,8 @@ module EXTMemoryPriority =
     let Name = "VK_EXT_memory_priority"
     let Number = 239
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -14095,6 +14162,8 @@ module EXTMetalSurface =
     let Name = "VK_EXT_metal_surface"
     let Number = 218
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -14147,6 +14216,8 @@ module EXTPciBusInfo =
     let Name = "VK_EXT_pci_bus_info"
     let Number = 213
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -14200,9 +14271,9 @@ module EXTPipelineCreationFeedback =
     [<Flags>]
     type VkPipelineCreationFeedbackFlagsEXT = 
         | None = 0
-        | VkPipelineCreationFeedbackValidBitExt = 0x00000001
-        | VkPipelineCreationFeedbackApplicationPipelineCacheHitBitExt = 0x00000002
-        | VkPipelineCreationFeedbackBasePipelineAccelerationBitExt = 0x00000004
+        | ValidBit = 0x00000001
+        | ApplicationPipelineCacheHitBit = 0x00000002
+        | BasePipelineAccelerationBit = 0x00000004
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -14276,6 +14347,8 @@ module EXTSampleLocations =
     let Name = "VK_EXT_sample_locations"
     let Number = 144
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -14537,12 +14610,14 @@ module EXTSamplerFilterMinmax =
     let Name = "VK_EXT_sampler_filter_minmax"
     let Number = 131
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     type VkSamplerReductionModeEXT = 
-        | VkSamplerReductionModeWeightedAverageExt = 0
-        | VkSamplerReductionModeMinExt = 1
-        | VkSamplerReductionModeMaxExt = 2
+        | WeightedAverage = 0
+        | Min = 1
+        | Max = 2
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -14609,6 +14684,8 @@ module EXTScalarBlockLayout =
     let Name = "VK_EXT_scalar_block_layout"
     let Number = 222
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -14681,6 +14758,8 @@ module EXTShaderDemoteToHelperInvocation =
     let Name = "VK_EXT_shader_demote_to_helper_invocation"
     let Number = 277
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -14862,6 +14941,8 @@ module EXTSwapchainColorspace =
     let Name = "VK_EXT_swapchain_colorspace"
     let Number = 105
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -14887,6 +14968,8 @@ module EXTTexelBufferAlignment =
     let Name = "VK_EXT_texel_buffer_alignment"
     let Number = 282
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -14960,6 +15043,8 @@ module EXTTextureCompressionAstcHdr =
     let Name = "VK_EXT_texture_compression_astc_hdr"
     let Number = 67
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -15007,10 +15092,111 @@ module EXTTextureCompressionAstcHdr =
          static member inline PhysicalDeviceTextureCompressionAstcHdrFeaturesExt = unbox<VkStructureType> 1000066000
     
 
+module EXTToolingInfo =
+    let Name = "VK_EXT_tooling_info"
+    let Number = 246
+    
+    open EXTDebugReport
+    
+    [<Flags>]
+    type VkToolPurposeFlagsEXT = 
+        | None = 0
+        | ValidationBit = 0x00000001
+        | ProfilingBit = 0x00000002
+        | TracingBit = 0x00000004
+        | AdditionalFeaturesBit = 0x00000008
+        | ModifyingFeaturesBit = 0x00000010
+    
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPhysicalDeviceToolPropertiesEXT = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public name : String256
+            val mutable public version : String256
+            val mutable public purposes : VkToolPurposeFlagsEXT
+            val mutable public description : String256
+            val mutable public layer : String256
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , name : String256
+              , version : String256
+              , purposes : VkToolPurposeFlagsEXT
+              , description : String256
+              , layer : String256
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    name = name
+                    version = version
+                    purposes = purposes
+                    description = description
+                    layer = layer
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "name = %A" x.name
+                    sprintf "version = %A" x.version
+                    sprintf "purposes = %A" x.purposes
+                    sprintf "description = %A" x.description
+                    sprintf "layer = %A" x.layer
+                ] |> sprintf "VkPhysicalDeviceToolPropertiesEXT { %s }"
+        end
+    
+    
+    type VkStructureType with
+         static member inline PhysicalDeviceToolPropertiesExt = unbox<VkStructureType> 1000245000
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module VkRaw =
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkGetPhysicalDeviceToolPropertiesEXTDel = delegate of VkPhysicalDevice * nativeptr<uint32> * nativeptr<VkPhysicalDeviceToolPropertiesEXT> -> VkResult
+        
+        [<AbstractClass; Sealed>]
+        type private Loader<'d> private() =
+            static do Report.Begin(3, "[Vulkan] loading VK_EXT_tooling_info")
+            static let s_vkGetPhysicalDeviceToolPropertiesEXTDel = VkRaw.vkImportInstanceDelegate<VkGetPhysicalDeviceToolPropertiesEXTDel> "vkGetPhysicalDeviceToolPropertiesEXT"
+            static do Report.End(3) |> ignore
+            static member vkGetPhysicalDeviceToolPropertiesEXT = s_vkGetPhysicalDeviceToolPropertiesEXTDel
+        let vkGetPhysicalDeviceToolPropertiesEXT(physicalDevice : VkPhysicalDevice, pToolCount : nativeptr<uint32>, pToolProperties : nativeptr<VkPhysicalDeviceToolPropertiesEXT>) = Loader<unit>.vkGetPhysicalDeviceToolPropertiesEXT.Invoke(physicalDevice, pToolCount, pToolProperties)
+    
+    module EXTDebugReport =
+        
+        
+        type VkToolPurposeFlagsEXT with
+             static member inline VkToolPurposeDebugReportingBitExt = unbox<VkToolPurposeFlagsEXT> 32
+        
+    
+    module EXTDebugMarker =
+        open EXTDebugReport
+        
+        
+        
+        type VkToolPurposeFlagsEXT with
+             static member inline VkToolPurposeDebugMarkersBitExt = unbox<VkToolPurposeFlagsEXT> 64
+        
+    
+    module EXTDebugUtils =
+        open EXTDebugReport
+        
+        
+        
+        type VkToolPurposeFlagsEXT with
+             static member inline VkToolPurposeDebugReportingBitExt = unbox<VkToolPurposeFlagsEXT> 32
+             static member inline VkToolPurposeDebugMarkersBitExt = unbox<VkToolPurposeFlagsEXT> 64
+        
+
 module EXTTransformFeedback =
     let Name = "VK_EXT_transform_feedback"
     let Number = 29
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -15192,7 +15378,7 @@ module EXTValidationCache =
     open EXTDebugReport
     
     type VkValidationCacheHeaderVersionEXT = 
-        | VkValidationCacheHeaderVersionOneExt = 1
+        | One = 1
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -15378,6 +15564,8 @@ module EXTVertexAttributeDivisor =
     let Name = "VK_EXT_vertex_attribute_divisor"
     let Number = 191
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -15492,6 +15680,8 @@ module EXTYcbcrImageArrays =
     let Name = "VK_EXT_ycbcr_image_arrays"
     let Number = 253
     
+    let Required = [ KHRSamplerYcbcrConversion.Name ]
+    open KHRSamplerYcbcrConversion
     open EXTDebugReport
     
     
@@ -15528,6 +15718,8 @@ module FUCHSIAImagepipeSurface =
     let Name = "VK_FUCHSIA_imagepipe_surface"
     let Number = 215
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -15580,6 +15772,8 @@ module GGPStreamDescriptorSurface =
     let Name = "VK_GGP_stream_descriptor_surface"
     let Number = 50
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -15632,6 +15826,9 @@ module GGPFrameToken =
     let Name = "VK_GGP_frame_token"
     let Number = 192
     
+    let Required = [ GGPStreamDescriptorSurface.Name; KHRSwapchain.Name ]
+    open GGPStreamDescriptorSurface
+    open KHRSwapchain
     open EXTDebugReport
     
     
@@ -15678,6 +15875,8 @@ module GOOGLEDisplayTiming =
     let Name = "VK_GOOGLE_display_timing"
     let Number = 93
     
+    let Required = [ KHRSwapchain.Name ]
+    open KHRSwapchain
     open EXTDebugReport
     
     
@@ -15845,25 +16044,25 @@ module INTELPerformanceQuery =
     open EXTDebugReport
     
     type VkPerformanceConfigurationTypeINTEL = 
-        | VkPerformanceConfigurationTypeCommandQueueMetricsDiscoveryActivatedIntel = 0
+        | CommandQueueMetricsDiscoveryActivated = 0
     
     type VkQueryPoolSamplingModeINTEL = 
-        | VkQueryPoolSamplingModeManualIntel = 0
+        | Manual = 0
     
     type VkPerformanceOverrideTypeINTEL = 
-        | VkPerformanceOverrideTypeNullHardwareIntel = 0
-        | VkPerformanceOverrideTypeFlushGpuCachesIntel = 1
+        | NullHardware = 0
+        | FlushGpuCaches = 1
     
     type VkPerformanceParameterTypeINTEL = 
-        | VkPerformanceParameterTypeHwCountersSupportedIntel = 0
-        | VkPerformanceParameterTypeStreamMarkerValidBitsIntel = 1
+        | HwCountersSupported = 0
+        | StreamMarkerValidBits = 1
     
     type VkPerformanceValueTypeINTEL = 
-        | VkPerformanceValueTypeUint32Intel = 0
-        | VkPerformanceValueTypeUint64Intel = 1
-        | VkPerformanceValueTypeFloatIntel = 2
-        | VkPerformanceValueTypeBoolIntel = 3
-        | VkPerformanceValueTypeStringIntel = 4
+        | Uint32 = 0
+        | Uint64 = 1
+        | Float = 2
+        | Bool = 3
+        | String = 4
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -16131,6 +16330,8 @@ module INTELShaderIntegerFunctions2 =
     let Name = "VK_INTEL_shader_integer_functions2"
     let Number = 210
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -16177,6 +16378,9 @@ module KHR16bitStorage =
     let Name = "VK_KHR_16bit_storage"
     let Number = 84
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name; KHRStorageBufferStorageClass.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open KHRStorageBufferStorageClass
     open EXTDebugReport
     
     
@@ -16188,6 +16392,9 @@ module KHR8bitStorage =
     let Name = "VK_KHR_8bit_storage"
     let Number = 178
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name; KHRStorageBufferStorageClass.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open KHRStorageBufferStorageClass
     open EXTDebugReport
     
     
@@ -16232,6 +16439,8 @@ module KHRAndroidSurface =
     let Name = "VK_KHR_android_surface"
     let Number = 9
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -16280,10 +16489,189 @@ module KHRAndroidSurface =
             static member vkCreateAndroidSurfaceKHR = s_vkCreateAndroidSurfaceKHRDel
         let vkCreateAndroidSurfaceKHR(instance : VkInstance, pCreateInfo : nativeptr<VkAndroidSurfaceCreateInfoKHR>, pAllocator : nativeptr<VkAllocationCallbacks>, pSurface : nativeptr<VkSurfaceKHR>) = Loader<unit>.vkCreateAndroidSurfaceKHR.Invoke(instance, pCreateInfo, pAllocator, pSurface)
 
+module KHRBufferDeviceAddress =
+    let Name = "VK_KHR_buffer_device_address"
+    let Number = 258
+    
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open EXTDebugReport
+    
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkBufferDeviceAddressInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public buffer : VkBuffer
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , buffer : VkBuffer
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    buffer = buffer
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "buffer = %A" x.buffer
+                ] |> sprintf "VkBufferDeviceAddressInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkBufferOpaqueCaptureAddressCreateInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public opaqueCaptureAddress : uint64
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , opaqueCaptureAddress : uint64
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    opaqueCaptureAddress = opaqueCaptureAddress
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "opaqueCaptureAddress = %A" x.opaqueCaptureAddress
+                ] |> sprintf "VkBufferOpaqueCaptureAddressCreateInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkDeviceMemoryOpaqueCaptureAddressInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public memory : VkDeviceMemory
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , memory : VkDeviceMemory
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    memory = memory
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "memory = %A" x.memory
+                ] |> sprintf "VkDeviceMemoryOpaqueCaptureAddressInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkMemoryOpaqueCaptureAddressAllocateInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public opaqueCaptureAddress : uint64
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , opaqueCaptureAddress : uint64
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    opaqueCaptureAddress = opaqueCaptureAddress
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "opaqueCaptureAddress = %A" x.opaqueCaptureAddress
+                ] |> sprintf "VkMemoryOpaqueCaptureAddressAllocateInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPhysicalDeviceBufferDeviceAddressFeaturesKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public bufferDeviceAddress : VkBool32
+            val mutable public bufferDeviceAddressCaptureReplay : VkBool32
+            val mutable public bufferDeviceAddressMultiDevice : VkBool32
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , bufferDeviceAddress : VkBool32
+              , bufferDeviceAddressCaptureReplay : VkBool32
+              , bufferDeviceAddressMultiDevice : VkBool32
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    bufferDeviceAddress = bufferDeviceAddress
+                    bufferDeviceAddressCaptureReplay = bufferDeviceAddressCaptureReplay
+                    bufferDeviceAddressMultiDevice = bufferDeviceAddressMultiDevice
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "bufferDeviceAddress = %A" x.bufferDeviceAddress
+                    sprintf "bufferDeviceAddressCaptureReplay = %A" x.bufferDeviceAddressCaptureReplay
+                    sprintf "bufferDeviceAddressMultiDevice = %A" x.bufferDeviceAddressMultiDevice
+                ] |> sprintf "VkPhysicalDeviceBufferDeviceAddressFeaturesKHR { %s }"
+        end
+    
+    
+    type VkBufferCreateFlags with
+         static member inline DeviceAddressCaptureReplayBitKhr = unbox<VkBufferCreateFlags> 16
+    type VkBufferUsageFlags with
+         static member inline ShaderDeviceAddressBitKhr = unbox<VkBufferUsageFlags> 131072
+    type VkMemoryAllocateFlags with
+         static member inline DeviceAddressBitKhr = unbox<VkMemoryAllocateFlags> 2
+         static member inline DeviceAddressCaptureReplayBitKhr = unbox<VkMemoryAllocateFlags> 4
+    type VkResult with
+         static member inline VkErrorInvalidOpaqueCaptureAddressKhr = unbox<VkResult> -1000257000
+    type VkStructureType with
+         static member inline PhysicalDeviceBufferDeviceAddressFeaturesKhr = unbox<VkStructureType> 1000257000
+         static member inline BufferDeviceAddressInfoKhr = unbox<VkStructureType> 1000257001
+         static member inline BufferOpaqueCaptureAddressCreateInfoKhr = unbox<VkStructureType> 1000257002
+         static member inline MemoryOpaqueCaptureAddressAllocateInfoKhr = unbox<VkStructureType> 1000257003
+         static member inline DeviceMemoryOpaqueCaptureAddressInfoKhr = unbox<VkStructureType> 1000257004
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module VkRaw =
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkGetBufferDeviceAddressKHRDel = delegate of VkDevice * nativeptr<VkBufferDeviceAddressInfoKHR> -> VkDeviceAddress
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkGetBufferOpaqueCaptureAddressKHRDel = delegate of VkDevice * nativeptr<VkBufferDeviceAddressInfoKHR> -> uint64
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkGetDeviceMemoryOpaqueCaptureAddressKHRDel = delegate of VkDevice * nativeptr<VkDeviceMemoryOpaqueCaptureAddressInfoKHR> -> uint64
+        
+        [<AbstractClass; Sealed>]
+        type private Loader<'d> private() =
+            static do Report.Begin(3, "[Vulkan] loading VK_KHR_buffer_device_address")
+            static let s_vkGetBufferDeviceAddressKHRDel = VkRaw.vkImportInstanceDelegate<VkGetBufferDeviceAddressKHRDel> "vkGetBufferDeviceAddressKHR"
+            static let s_vkGetBufferOpaqueCaptureAddressKHRDel = VkRaw.vkImportInstanceDelegate<VkGetBufferOpaqueCaptureAddressKHRDel> "vkGetBufferOpaqueCaptureAddressKHR"
+            static let s_vkGetDeviceMemoryOpaqueCaptureAddressKHRDel = VkRaw.vkImportInstanceDelegate<VkGetDeviceMemoryOpaqueCaptureAddressKHRDel> "vkGetDeviceMemoryOpaqueCaptureAddressKHR"
+            static do Report.End(3) |> ignore
+            static member vkGetBufferDeviceAddressKHR = s_vkGetBufferDeviceAddressKHRDel
+            static member vkGetBufferOpaqueCaptureAddressKHR = s_vkGetBufferOpaqueCaptureAddressKHRDel
+            static member vkGetDeviceMemoryOpaqueCaptureAddressKHR = s_vkGetDeviceMemoryOpaqueCaptureAddressKHRDel
+        let vkGetBufferDeviceAddressKHR(device : VkDevice, pInfo : nativeptr<VkBufferDeviceAddressInfoKHR>) = Loader<unit>.vkGetBufferDeviceAddressKHR.Invoke(device, pInfo)
+        let vkGetBufferOpaqueCaptureAddressKHR(device : VkDevice, pInfo : nativeptr<VkBufferDeviceAddressInfoKHR>) = Loader<unit>.vkGetBufferOpaqueCaptureAddressKHR.Invoke(device, pInfo)
+        let vkGetDeviceMemoryOpaqueCaptureAddressKHR(device : VkDevice, pInfo : nativeptr<VkDeviceMemoryOpaqueCaptureAddressInfoKHR>) = Loader<unit>.vkGetDeviceMemoryOpaqueCaptureAddressKHR.Invoke(device, pInfo)
+
 module KHRMultiview =
     let Name = "VK_KHR_multiview"
     let Number = 54
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -16312,6 +16700,9 @@ module KHRCreateRenderpass2 =
     let Name = "VK_KHR_create_renderpass2"
     let Number = 110
     
+    let Required = [ KHRMaintenance2.Name; KHRMultiview.Name ]
+    open KHRMaintenance2
+    open KHRMultiview
     open EXTDebugReport
     
     
@@ -16357,6 +16748,8 @@ module KHRDedicatedAllocation =
     let Name = "VK_KHR_dedicated_allocation"
     let Number = 128
     
+    let Required = [ KHRGetMemoryRequirements2.Name ]
+    open KHRGetMemoryRequirements2
     open EXTDebugReport
     
     
@@ -16369,15 +16762,17 @@ module KHRDepthStencilResolve =
     let Name = "VK_KHR_depth_stencil_resolve"
     let Number = 200
     
+    let Required = [ KHRCreateRenderpass2.Name ]
+    open KHRCreateRenderpass2
     open EXTDebugReport
     
     [<Flags>]
     type VkResolveModeFlagsKHR = 
-        | VkResolveModeNoneKhr = 0
-        | VkResolveModeSampleZeroBitKhr = 0x00000001
-        | VkResolveModeAverageBitKhr = 0x00000002
-        | VkResolveModeMinBitKhr = 0x00000004
-        | VkResolveModeMaxBitKhr = 0x00000008
+        | None = 0
+        | SampleZeroBit = 0x00000001
+        | AverageBit = 0x00000002
+        | MinBit = 0x00000004
+        | MaxBit = 0x00000008
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -16501,6 +16896,8 @@ module KHRDeviceGroup =
     let Name = "VK_KHR_device_group"
     let Number = 61
     
+    let Required = [ KHRDeviceGroupCreation.Name ]
+    open KHRDeviceGroupCreation
     open EXTDebugReport
     
     
@@ -16527,10 +16924,10 @@ module KHRDeviceGroup =
         [<Flags>]
         type VkDeviceGroupPresentModeFlagsKHR = 
             | None = 0
-            | VkDeviceGroupPresentModeLocalBitKhr = 0x00000001
-            | VkDeviceGroupPresentModeRemoteBitKhr = 0x00000002
-            | VkDeviceGroupPresentModeSumBitKhr = 0x00000004
-            | VkDeviceGroupPresentModeLocalMultiDeviceBitKhr = 0x00000008
+            | LocalBit = 0x00000001
+            | RemoteBit = 0x00000002
+            | SumBit = 0x00000004
+            | LocalMultiDeviceBit = 0x00000008
         
         
         [<StructLayout(LayoutKind.Sequential)>]
@@ -16767,6 +17164,9 @@ module KHRDisplaySwapchain =
     let Name = "VK_KHR_display_swapchain"
     let Number = 4
     
+    let Required = [ KHRDisplay.Name; KHRSwapchain.Name ]
+    open KHRDisplay
+    open KHRSwapchain
     open EXTDebugReport
     
     
@@ -16852,21 +17252,23 @@ module KHRDriverProperties =
     let Name = "VK_KHR_driver_properties"
     let Number = 197
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     type VkDriverIdKHR = 
-        | VkDriverIdAmdProprietaryKhr = 1
-        | VkDriverIdAmdOpenSourceKhr = 2
-        | VkDriverIdMesaRadvKhr = 3
-        | VkDriverIdNvidiaProprietaryKhr = 4
-        | VkDriverIdIntelProprietaryWindowsKhr = 5
-        | VkDriverIdIntelOpenSourceMesaKhr = 6
-        | VkDriverIdImaginationProprietaryKhr = 7
-        | VkDriverIdQualcommProprietaryKhr = 8
-        | VkDriverIdArmProprietaryKhr = 9
-        | VkDriverIdGoogleSwiftshaderKhr = 10
-        | VkDriverIdGgpProprietaryKhr = 11
-        | VkDriverIdBroadcomProprietaryKhr = 12
+        | AmdProprietary = 1
+        | AmdOpenSource = 2
+        | MesaRadv = 3
+        | NvidiaProprietary = 4
+        | IntelProprietaryWindows = 5
+        | IntelOpenSourceMesa = 6
+        | ImaginationProprietary = 7
+        | QualcommProprietary = 8
+        | ArmProprietary = 9
+        | GoogleSwiftshader = 10
+        | GgpProprietary = 11
+        | BroadcomProprietary = 12
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -16950,10 +17352,24 @@ module KHRExtension221 =
          static member inline Reserved0BitKhr = unbox<VkRenderPassCreateFlags> 1
     
 
+module KHRExtension297 =
+    let Name = "VK_KHR_extension_297"
+    let Number = 297
+    
+    open EXTDebugReport
+    
+    
+    
+    type VkPipelineShaderStageCreateFlags with
+         static member inline Reserved3BitKhr = unbox<VkPipelineShaderStageCreateFlags> 8
+    
+
 module KHRExternalFenceCapabilities =
     let Name = "VK_KHR_external_fence_capabilities"
     let Number = 113
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -16966,6 +17382,8 @@ module KHRExternalFence =
     let Name = "VK_KHR_external_fence"
     let Number = 114
     
+    let Required = [ KHRExternalFenceCapabilities.Name ]
+    open KHRExternalFenceCapabilities
     open EXTDebugReport
     
     
@@ -16977,6 +17395,8 @@ module KHRExternalFenceFd =
     let Name = "VK_KHR_external_fence_fd"
     let Number = 116
     
+    let Required = [ KHRExternalFence.Name ]
+    open KHRExternalFence
     open EXTDebugReport
     
     
@@ -17071,6 +17491,8 @@ module KHRExternalFenceWin32 =
     let Name = "VK_KHR_external_fence_win32"
     let Number = 115
     
+    let Required = [ KHRExternalFence.Name ]
+    open KHRExternalFence
     open EXTDebugReport
     
     
@@ -17202,6 +17624,8 @@ module KHRExternalMemoryWin32 =
     let Name = "VK_KHR_external_memory_win32"
     let Number = 74
     
+    let Required = [ KHRExternalMemory.Name ]
+    open KHRExternalMemory
     open EXTDebugReport
     
     
@@ -17350,6 +17774,8 @@ module KHRExternalSemaphoreCapabilities =
     let Name = "VK_KHR_external_semaphore_capabilities"
     let Number = 77
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -17362,6 +17788,8 @@ module KHRExternalSemaphore =
     let Name = "VK_KHR_external_semaphore"
     let Number = 78
     
+    let Required = [ KHRExternalSemaphoreCapabilities.Name ]
+    open KHRExternalSemaphoreCapabilities
     open EXTDebugReport
     
     
@@ -17373,6 +17801,8 @@ module KHRExternalSemaphoreFd =
     let Name = "VK_KHR_external_semaphore_fd"
     let Number = 80
     
+    let Required = [ KHRExternalSemaphore.Name ]
+    open KHRExternalSemaphore
     open EXTDebugReport
     
     
@@ -17467,6 +17897,8 @@ module KHRExternalSemaphoreWin32 =
     let Name = "VK_KHR_external_semaphore_win32"
     let Number = 79
     
+    let Required = [ KHRExternalSemaphore.Name ]
+    open KHRExternalSemaphore
     open EXTDebugReport
     
     
@@ -17635,8 +18067,10 @@ module KHRGetDisplayProperties2 =
     let Name = "VK_KHR_get_display_properties2"
     let Number = 122
     
-    open EXTDebugReport
+    let Required = [ KHRDisplay.Name ]
     open KHRDisplay
+    open EXTDebugReport
+    
     
     [<StructLayout(LayoutKind.Sequential)>]
     type VkDisplayModeProperties2KHR = 
@@ -17802,6 +18236,9 @@ module KHRImagelessFramebuffer =
     let Name = "VK_KHR_imageless_framebuffer"
     let Number = 109
     
+    let Required = [ KHRImageFormatList.Name; KHRMaintenance2.Name ]
+    open KHRImageFormatList
+    open KHRMaintenance2
     open EXTDebugReport
     
     
@@ -17899,6 +18336,8 @@ module KHRIncrementalPresent =
     let Name = "VK_KHR_incremental_present"
     let Number = 85
     
+    let Required = [ KHRSwapchain.Name ]
+    open KHRSwapchain
     open EXTDebugReport
     
     
@@ -17983,11 +18422,328 @@ module KHRMirSurface =
     let Name = "VK_KHR_mir_surface"
     let Number = 8
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
     
     
+
+module KHRPerformanceQuery =
+    let Name = "VK_KHR_performance_query"
+    let Number = 117
+    
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open EXTDebugReport
+    
+    [<Flags>]
+    type VkPerformanceCounterDescriptionFlagsKHR = 
+        | None = 0
+        | PerformanceImpacting = 0x00000001
+        | ConcurrentlyImpacted = 0x00000002
+    
+    type VkPerformanceCounterScopeKHR = 
+        | VkQueryScopeCommandBuffer = 0
+        | VkQueryScopeRenderPass = 1
+        | VkQueryScopeCommand = 2
+    
+    type VkPerformanceCounterStorageKHR = 
+        | Int32 = 0
+        | Int64 = 1
+        | Uint32 = 2
+        | Uint64 = 3
+        | Float32 = 4
+        | Float64 = 5
+    
+    type VkPerformanceCounterUnitKHR = 
+        | Generic = 0
+        | Percentage = 1
+        | Nanoseconds = 2
+        | Bytes = 3
+        | BytesPerSecond = 4
+        | Kelvin = 5
+        | Watts = 6
+        | Volts = 7
+        | Amps = 8
+        | Hertz = 9
+        | Cycles = 10
+    
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkAcquireProfilingLockInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public flags : VkAcquireProfilingLockFlagsKHR
+            val mutable public timeout : uint64
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , flags : VkAcquireProfilingLockFlagsKHR
+              , timeout : uint64
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    flags = flags
+                    timeout = timeout
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "flags = %A" x.flags
+                    sprintf "timeout = %A" x.timeout
+                ] |> sprintf "VkAcquireProfilingLockInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPerformanceCounterDescriptionKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public flags : VkPerformanceCounterDescriptionFlagsKHR
+            val mutable public name : String256
+            val mutable public category : String256
+            val mutable public description : String256
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , flags : VkPerformanceCounterDescriptionFlagsKHR
+              , name : String256
+              , category : String256
+              , description : String256
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    flags = flags
+                    name = name
+                    category = category
+                    description = description
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "flags = %A" x.flags
+                    sprintf "name = %A" x.name
+                    sprintf "category = %A" x.category
+                    sprintf "description = %A" x.description
+                ] |> sprintf "VkPerformanceCounterDescriptionKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPerformanceCounterKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public unit : VkPerformanceCounterUnitKHR
+            val mutable public scope : VkPerformanceCounterScopeKHR
+            val mutable public storage : VkPerformanceCounterStorageKHR
+            val mutable public uuid : Guid
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , unit : VkPerformanceCounterUnitKHR
+              , scope : VkPerformanceCounterScopeKHR
+              , storage : VkPerformanceCounterStorageKHR
+              , uuid : Guid
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    unit = unit
+                    scope = scope
+                    storage = storage
+                    uuid = uuid
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "unit = %A" x.unit
+                    sprintf "scope = %A" x.scope
+                    sprintf "storage = %A" x.storage
+                    sprintf "uuid = %A" x.uuid
+                ] |> sprintf "VkPerformanceCounterKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Explicit)>]
+    type VkPerformanceCounterResultKHR = 
+        struct
+            [<FieldOffset(0)>]
+            val mutable public int32 : int
+            [<FieldOffset(0)>]
+            val mutable public int64 : nativeint
+            [<FieldOffset(0)>]
+            val mutable public uint32 : uint32
+            [<FieldOffset(0)>]
+            val mutable public uint64 : uint64
+            [<FieldOffset(0)>]
+            val mutable public float32 : float32
+            [<FieldOffset(0)>]
+            val mutable public float64 : nativeint
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "int32 = %A" x.int32
+                    sprintf "int64 = %A" x.int64
+                    sprintf "uint32 = %A" x.uint32
+                    sprintf "uint64 = %A" x.uint64
+                    sprintf "float32 = %A" x.float32
+                    sprintf "float64 = %A" x.float64
+                ] |> sprintf "VkPerformanceCounterResultKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPerformanceQuerySubmitInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public counterPassIndex : uint32
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , counterPassIndex : uint32
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    counterPassIndex = counterPassIndex
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "counterPassIndex = %A" x.counterPassIndex
+                ] |> sprintf "VkPerformanceQuerySubmitInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPhysicalDevicePerformanceQueryFeaturesKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public performanceCounterQueryPools : VkBool32
+            val mutable public performanceCounterMultipleQueryPools : VkBool32
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , performanceCounterQueryPools : VkBool32
+              , performanceCounterMultipleQueryPools : VkBool32
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    performanceCounterQueryPools = performanceCounterQueryPools
+                    performanceCounterMultipleQueryPools = performanceCounterMultipleQueryPools
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "performanceCounterQueryPools = %A" x.performanceCounterQueryPools
+                    sprintf "performanceCounterMultipleQueryPools = %A" x.performanceCounterMultipleQueryPools
+                ] |> sprintf "VkPhysicalDevicePerformanceQueryFeaturesKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPhysicalDevicePerformanceQueryPropertiesKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public allowCommandBufferQueryCopies : VkBool32
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , allowCommandBufferQueryCopies : VkBool32
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    allowCommandBufferQueryCopies = allowCommandBufferQueryCopies
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "allowCommandBufferQueryCopies = %A" x.allowCommandBufferQueryCopies
+                ] |> sprintf "VkPhysicalDevicePerformanceQueryPropertiesKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkQueryPoolPerformanceCreateInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public queueFamilyIndex : uint32
+            val mutable public counterIndexCount : uint32
+            val mutable public pCounterIndices : nativeptr<uint32>
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , queueFamilyIndex : uint32
+              , counterIndexCount : uint32
+              , pCounterIndices : nativeptr<uint32>
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    queueFamilyIndex = queueFamilyIndex
+                    counterIndexCount = counterIndexCount
+                    pCounterIndices = pCounterIndices
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "queueFamilyIndex = %A" x.queueFamilyIndex
+                    sprintf "counterIndexCount = %A" x.counterIndexCount
+                    sprintf "pCounterIndices = %A" x.pCounterIndices
+                ] |> sprintf "VkQueryPoolPerformanceCreateInfoKHR { %s }"
+        end
+    
+    
+    type VkQueryType with
+         static member inline PerformanceQueryKhr = unbox<VkQueryType> 1000116000
+    type VkStructureType with
+         static member inline PhysicalDevicePerformanceQueryFeaturesKhr = unbox<VkStructureType> 1000116000
+         static member inline PhysicalDevicePerformanceQueryPropertiesKhr = unbox<VkStructureType> 1000116001
+         static member inline QueryPoolPerformanceCreateInfoKhr = unbox<VkStructureType> 1000116002
+         static member inline PerformanceQuerySubmitInfoKhr = unbox<VkStructureType> 1000116003
+         static member inline AcquireProfilingLockInfoKhr = unbox<VkStructureType> 1000116004
+         static member inline PerformanceCounterKhr = unbox<VkStructureType> 1000116005
+         static member inline PerformanceCounterDescriptionKhr = unbox<VkStructureType> 1000116006
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module VkRaw =
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHRDel = delegate of VkPhysicalDevice * uint32 * nativeptr<uint32> * nativeptr<VkPerformanceCounterKHR> * nativeptr<VkPerformanceCounterDescriptionKHR> -> VkResult
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHRDel = delegate of VkPhysicalDevice * nativeptr<VkQueryPoolPerformanceCreateInfoKHR> * nativeptr<uint32> -> unit
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkAcquireProfilingLockKHRDel = delegate of VkDevice * nativeptr<VkAcquireProfilingLockInfoKHR> -> VkResult
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkReleaseProfilingLockKHRDel = delegate of VkDevice -> unit
+        
+        [<AbstractClass; Sealed>]
+        type private Loader<'d> private() =
+            static do Report.Begin(3, "[Vulkan] loading VK_KHR_performance_query")
+            static let s_vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHRDel = VkRaw.vkImportInstanceDelegate<VkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHRDel> "vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR"
+            static let s_vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHRDel = VkRaw.vkImportInstanceDelegate<VkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHRDel> "vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR"
+            static let s_vkAcquireProfilingLockKHRDel = VkRaw.vkImportInstanceDelegate<VkAcquireProfilingLockKHRDel> "vkAcquireProfilingLockKHR"
+            static let s_vkReleaseProfilingLockKHRDel = VkRaw.vkImportInstanceDelegate<VkReleaseProfilingLockKHRDel> "vkReleaseProfilingLockKHR"
+            static do Report.End(3) |> ignore
+            static member vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR = s_vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHRDel
+            static member vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR = s_vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHRDel
+            static member vkAcquireProfilingLockKHR = s_vkAcquireProfilingLockKHRDel
+            static member vkReleaseProfilingLockKHR = s_vkReleaseProfilingLockKHRDel
+        let vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(physicalDevice : VkPhysicalDevice, queueFamilyIndex : uint32, pCounterCount : nativeptr<uint32>, pCounters : nativeptr<VkPerformanceCounterKHR>, pCounterDescriptions : nativeptr<VkPerformanceCounterDescriptionKHR>) = Loader<unit>.vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR.Invoke(physicalDevice, queueFamilyIndex, pCounterCount, pCounters, pCounterDescriptions)
+        let vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR(physicalDevice : VkPhysicalDevice, pPerformanceQueryCreateInfo : nativeptr<VkQueryPoolPerformanceCreateInfoKHR>, pNumPasses : nativeptr<uint32>) = Loader<unit>.vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR.Invoke(physicalDevice, pPerformanceQueryCreateInfo, pNumPasses)
+        let vkAcquireProfilingLockKHR(device : VkDevice, pInfo : nativeptr<VkAcquireProfilingLockInfoKHR>) = Loader<unit>.vkAcquireProfilingLockKHR.Invoke(device, pInfo)
+        let vkReleaseProfilingLockKHR(device : VkDevice) = Loader<unit>.vkReleaseProfilingLockKHR.Invoke(device)
 
 module KHRPipelineExecutableProperties =
     let Name = "VK_KHR_pipeline_executable_properties"
@@ -17996,10 +18752,10 @@ module KHRPipelineExecutableProperties =
     open EXTDebugReport
     
     type VkPipelineExecutableStatisticFormatKHR = 
-        | VkPipelineExecutableStatisticFormatBool32Khr = 0
-        | VkPipelineExecutableStatisticFormatInt64Khr = 1
-        | VkPipelineExecutableStatisticFormatUint64Khr = 2
-        | VkPipelineExecutableStatisticFormatFloat64Khr = 3
+        | Bool32 = 0
+        | Int64 = 1
+        | Uint64 = 2
+        | Float64 = 3
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -18249,6 +19005,8 @@ module KHRPushDescriptor =
     let Name = "VK_KHR_push_descriptor"
     let Number = 81
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -18315,10 +19073,110 @@ module KHRSamplerMirrorClampToEdge =
     
     
 
+module KHRSeparateDepthStencilLayouts =
+    let Name = "VK_KHR_separate_depth_stencil_layouts"
+    let Number = 242
+    
+    let Required = [ KHRCreateRenderpass2.Name; KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRCreateRenderpass2
+    open KHRGetPhysicalDeviceProperties2
+    open EXTDebugReport
+    
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkAttachmentDescriptionStencilLayoutKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public stencilInitialLayout : VkImageLayout
+            val mutable public stencilFinalLayout : VkImageLayout
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , stencilInitialLayout : VkImageLayout
+              , stencilFinalLayout : VkImageLayout
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    stencilInitialLayout = stencilInitialLayout
+                    stencilFinalLayout = stencilFinalLayout
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "stencilInitialLayout = %A" x.stencilInitialLayout
+                    sprintf "stencilFinalLayout = %A" x.stencilFinalLayout
+                ] |> sprintf "VkAttachmentDescriptionStencilLayoutKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkAttachmentReferenceStencilLayoutKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public stencilLayout : VkImageLayout
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , stencilLayout : VkImageLayout
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    stencilLayout = stencilLayout
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "stencilLayout = %A" x.stencilLayout
+                ] |> sprintf "VkAttachmentReferenceStencilLayoutKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public separateDepthStencilLayouts : VkBool32
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , separateDepthStencilLayouts : VkBool32
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    separateDepthStencilLayouts = separateDepthStencilLayouts
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "separateDepthStencilLayouts = %A" x.separateDepthStencilLayouts
+                ] |> sprintf "VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR { %s }"
+        end
+    
+    
+    type VkImageLayout with
+         static member inline DepthAttachmentOptimalKhr = unbox<VkImageLayout> 1000241000
+         static member inline DepthReadOnlyOptimalKhr = unbox<VkImageLayout> 1000241001
+         static member inline StencilAttachmentOptimalKhr = unbox<VkImageLayout> 1000241002
+         static member inline StencilReadOnlyOptimalKhr = unbox<VkImageLayout> 1000241003
+    type VkStructureType with
+         static member inline PhysicalDeviceSeparateDepthStencilLayoutsFeaturesKhr = unbox<VkStructureType> 1000241000
+         static member inline AttachmentReferenceStencilLayoutKhr = unbox<VkStructureType> 1000241001
+         static member inline AttachmentDescriptionStencilLayoutKhr = unbox<VkStructureType> 1000241002
+    
+
 module KHRShaderAtomicInt64 =
     let Name = "VK_KHR_shader_atomic_int64"
     let Number = 181
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -18355,6 +19213,48 @@ module KHRShaderAtomicInt64 =
          static member inline PhysicalDeviceShaderAtomicInt64FeaturesKhr = unbox<VkStructureType> 1000180000
     
 
+module KHRShaderClock =
+    let Name = "VK_KHR_shader_clock"
+    let Number = 182
+    
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open EXTDebugReport
+    
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPhysicalDeviceShaderClockFeaturesKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public shaderSubgroupClock : VkBool32
+            val mutable public shaderDeviceClock : VkBool32
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , shaderSubgroupClock : VkBool32
+              , shaderDeviceClock : VkBool32
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    shaderSubgroupClock = shaderSubgroupClock
+                    shaderDeviceClock = shaderDeviceClock
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "shaderSubgroupClock = %A" x.shaderSubgroupClock
+                    sprintf "shaderDeviceClock = %A" x.shaderDeviceClock
+                ] |> sprintf "VkPhysicalDeviceShaderClockFeaturesKHR { %s }"
+        end
+    
+    
+    type VkStructureType with
+         static member inline PhysicalDeviceShaderClockFeaturesKhr = unbox<VkStructureType> 1000181000
+    
+
 module KHRShaderDrawParameters =
     let Name = "VK_KHR_shader_draw_parameters"
     let Number = 64
@@ -18369,6 +19269,8 @@ module KHRShaderFloat16Int8 =
     let Name = "VK_KHR_shader_float16_int8"
     let Number = 83
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -18410,12 +19312,14 @@ module KHRShaderFloatControls =
     let Name = "VK_KHR_shader_float_controls"
     let Number = 198
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     type VkShaderFloatControlsIndependenceKHR = 
-        | VkShaderFloatControlsIndependence32BitOnlyKhr = 0
-        | VkShaderFloatControlsIndependenceAllKhr = 1
-        | VkShaderFloatControlsIndependenceNoneKhr = 2
+        | D32BitOnly = 0
+        | All = 1
+        | None = 2
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -18551,6 +19455,10 @@ module KHRSharedPresentableImage =
     let Name = "VK_KHR_shared_presentable_image"
     let Number = 112
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name; KHRGetSurfaceCapabilities2.Name; KHRSwapchain.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open KHRGetSurfaceCapabilities2
+    open KHRSwapchain
     open EXTDebugReport
     
     
@@ -18600,10 +19508,24 @@ module KHRSharedPresentableImage =
             static member vkGetSwapchainStatusKHR = s_vkGetSwapchainStatusKHRDel
         let vkGetSwapchainStatusKHR(device : VkDevice, swapchain : VkSwapchainKHR) = Loader<unit>.vkGetSwapchainStatusKHR.Invoke(device, swapchain)
 
+module KHRSpirv14 =
+    let Name = "VK_KHR_spirv_1_4"
+    let Number = 237
+    
+    let Required = [ KHRShaderFloatControls.Name ]
+    open KHRShaderFloatControls
+    open EXTDebugReport
+    
+    
+    
+    
+
 module KHRSurfaceProtectedCapabilities =
     let Name = "VK_KHR_surface_protected_capabilities"
     let Number = 240
     
+    let Required = [ KHRGetSurfaceCapabilities2.Name ]
+    open KHRGetSurfaceCapabilities2
     open EXTDebugReport
     
     
@@ -18640,6 +19562,10 @@ module KHRSwapchainMutableFormat =
     let Name = "VK_KHR_swapchain_mutable_format"
     let Number = 201
     
+    let Required = [ KHRImageFormatList.Name; KHRMaintenance2.Name; KHRSwapchain.Name ]
+    open KHRImageFormatList
+    open KHRMaintenance2
+    open KHRSwapchain
     open EXTDebugReport
     
     
@@ -18648,10 +19574,238 @@ module KHRSwapchainMutableFormat =
          static member inline VkSwapchainCreateMutableFormatBitKhr = unbox<VkSwapchainCreateFlagsKHR> 4
     
 
+module KHRTimelineSemaphore =
+    let Name = "VK_KHR_timeline_semaphore"
+    let Number = 208
+    
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open EXTDebugReport
+    
+    type VkSemaphoreTypeKHR = 
+        | Binary = 0
+        | Timeline = 1
+    
+    [<Flags>]
+    type VkSemaphoreWaitFlagsKHR = 
+        | None = 0
+        | AnyBit = 0x00000001
+    
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPhysicalDeviceTimelineSemaphoreFeaturesKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public timelineSemaphore : VkBool32
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , timelineSemaphore : VkBool32
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    timelineSemaphore = timelineSemaphore
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "timelineSemaphore = %A" x.timelineSemaphore
+                ] |> sprintf "VkPhysicalDeviceTimelineSemaphoreFeaturesKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkPhysicalDeviceTimelineSemaphorePropertiesKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public maxTimelineSemaphoreValueDifference : uint64
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , maxTimelineSemaphoreValueDifference : uint64
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    maxTimelineSemaphoreValueDifference = maxTimelineSemaphoreValueDifference
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "maxTimelineSemaphoreValueDifference = %A" x.maxTimelineSemaphoreValueDifference
+                ] |> sprintf "VkPhysicalDeviceTimelineSemaphorePropertiesKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkSemaphoreSignalInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public semaphore : VkSemaphore
+            val mutable public value : uint64
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , semaphore : VkSemaphore
+              , value : uint64
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    semaphore = semaphore
+                    value = value
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "semaphore = %A" x.semaphore
+                    sprintf "value = %A" x.value
+                ] |> sprintf "VkSemaphoreSignalInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkSemaphoreTypeCreateInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public semaphoreType : VkSemaphoreTypeKHR
+            val mutable public initialValue : uint64
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , semaphoreType : VkSemaphoreTypeKHR
+              , initialValue : uint64
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    semaphoreType = semaphoreType
+                    initialValue = initialValue
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "semaphoreType = %A" x.semaphoreType
+                    sprintf "initialValue = %A" x.initialValue
+                ] |> sprintf "VkSemaphoreTypeCreateInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkSemaphoreWaitInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public flags : VkSemaphoreWaitFlagsKHR
+            val mutable public semaphoreCount : uint32
+            val mutable public pSemaphores : nativeptr<VkSemaphore>
+            val mutable public pValues : nativeptr<uint64>
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , flags : VkSemaphoreWaitFlagsKHR
+              , semaphoreCount : uint32
+              , pSemaphores : nativeptr<VkSemaphore>
+              , pValues : nativeptr<uint64>
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    flags = flags
+                    semaphoreCount = semaphoreCount
+                    pSemaphores = pSemaphores
+                    pValues = pValues
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "flags = %A" x.flags
+                    sprintf "semaphoreCount = %A" x.semaphoreCount
+                    sprintf "pSemaphores = %A" x.pSemaphores
+                    sprintf "pValues = %A" x.pValues
+                ] |> sprintf "VkSemaphoreWaitInfoKHR { %s }"
+        end
+    
+    [<StructLayout(LayoutKind.Sequential)>]
+    type VkTimelineSemaphoreSubmitInfoKHR = 
+        struct
+            val mutable public sType : VkStructureType
+            val mutable public pNext : nativeint
+            val mutable public waitSemaphoreValueCount : uint32
+            val mutable public pWaitSemaphoreValues : nativeptr<uint64>
+            val mutable public signalSemaphoreValueCount : uint32
+            val mutable public pSignalSemaphoreValues : nativeptr<uint64>
+    
+            new(sType : VkStructureType
+              , pNext : nativeint
+              , waitSemaphoreValueCount : uint32
+              , pWaitSemaphoreValues : nativeptr<uint64>
+              , signalSemaphoreValueCount : uint32
+              , pSignalSemaphoreValues : nativeptr<uint64>
+              ) =
+                {
+                    sType = sType
+                    pNext = pNext
+                    waitSemaphoreValueCount = waitSemaphoreValueCount
+                    pWaitSemaphoreValues = pWaitSemaphoreValues
+                    signalSemaphoreValueCount = signalSemaphoreValueCount
+                    pSignalSemaphoreValues = pSignalSemaphoreValues
+                }
+            override x.ToString() =
+                String.concat "; " [
+                    sprintf "sType = %A" x.sType
+                    sprintf "pNext = %A" x.pNext
+                    sprintf "waitSemaphoreValueCount = %A" x.waitSemaphoreValueCount
+                    sprintf "pWaitSemaphoreValues = %A" x.pWaitSemaphoreValues
+                    sprintf "signalSemaphoreValueCount = %A" x.signalSemaphoreValueCount
+                    sprintf "pSignalSemaphoreValues = %A" x.pSignalSemaphoreValues
+                ] |> sprintf "VkTimelineSemaphoreSubmitInfoKHR { %s }"
+        end
+    
+    
+    type VkStructureType with
+         static member inline PhysicalDeviceTimelineSemaphoreFeaturesKhr = unbox<VkStructureType> 1000207000
+         static member inline PhysicalDeviceTimelineSemaphorePropertiesKhr = unbox<VkStructureType> 1000207001
+         static member inline SemaphoreTypeCreateInfoKhr = unbox<VkStructureType> 1000207002
+         static member inline TimelineSemaphoreSubmitInfoKhr = unbox<VkStructureType> 1000207003
+         static member inline SemaphoreWaitInfoKhr = unbox<VkStructureType> 1000207004
+         static member inline SemaphoreSignalInfoKhr = unbox<VkStructureType> 1000207005
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module VkRaw =
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkGetSemaphoreCounterValueKHRDel = delegate of VkDevice * VkSemaphore * nativeptr<uint64> -> VkResult
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkWaitSemaphoresKHRDel = delegate of VkDevice * nativeptr<VkSemaphoreWaitInfoKHR> * uint64 -> VkResult
+        [<SuppressUnmanagedCodeSecurity>]
+        type VkSignalSemaphoreKHRDel = delegate of VkDevice * nativeptr<VkSemaphoreSignalInfoKHR> -> VkResult
+        
+        [<AbstractClass; Sealed>]
+        type private Loader<'d> private() =
+            static do Report.Begin(3, "[Vulkan] loading VK_KHR_timeline_semaphore")
+            static let s_vkGetSemaphoreCounterValueKHRDel = VkRaw.vkImportInstanceDelegate<VkGetSemaphoreCounterValueKHRDel> "vkGetSemaphoreCounterValueKHR"
+            static let s_vkWaitSemaphoresKHRDel = VkRaw.vkImportInstanceDelegate<VkWaitSemaphoresKHRDel> "vkWaitSemaphoresKHR"
+            static let s_vkSignalSemaphoreKHRDel = VkRaw.vkImportInstanceDelegate<VkSignalSemaphoreKHRDel> "vkSignalSemaphoreKHR"
+            static do Report.End(3) |> ignore
+            static member vkGetSemaphoreCounterValueKHR = s_vkGetSemaphoreCounterValueKHRDel
+            static member vkWaitSemaphoresKHR = s_vkWaitSemaphoresKHRDel
+            static member vkSignalSemaphoreKHR = s_vkSignalSemaphoreKHRDel
+        let vkGetSemaphoreCounterValueKHR(device : VkDevice, semaphore : VkSemaphore, pValue : nativeptr<uint64>) = Loader<unit>.vkGetSemaphoreCounterValueKHR.Invoke(device, semaphore, pValue)
+        let vkWaitSemaphoresKHR(device : VkDevice, pWaitInfo : nativeptr<VkSemaphoreWaitInfoKHR>, timeout : uint64) = Loader<unit>.vkWaitSemaphoresKHR.Invoke(device, pWaitInfo, timeout)
+        let vkSignalSemaphoreKHR(device : VkDevice, pSignalInfo : nativeptr<VkSemaphoreSignalInfoKHR>) = Loader<unit>.vkSignalSemaphoreKHR.Invoke(device, pSignalInfo)
+
 module KHRUniformBufferStandardLayout =
     let Name = "VK_KHR_uniform_buffer_standard_layout"
     let Number = 254
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -18688,6 +19842,9 @@ module KHRVariablePointers =
     let Name = "VK_KHR_variable_pointers"
     let Number = 121
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name; KHRStorageBufferStorageClass.Name ]
+    open KHRGetPhysicalDeviceProperties2
+    open KHRStorageBufferStorageClass
     open EXTDebugReport
     
     
@@ -18744,6 +19901,8 @@ module KHRWaylandSurface =
     let Name = "VK_KHR_wayland_surface"
     let Number = 7
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -18805,6 +19964,8 @@ module KHRWin32KeyedMutex =
     let Name = "VK_KHR_win32_keyed_mutex"
     let Number = 76
     
+    let Required = [ KHRExternalMemoryWin32.Name ]
+    open KHRExternalMemoryWin32
     open EXTDebugReport
     
     
@@ -18865,6 +20026,8 @@ module KHRWin32Surface =
     let Name = "VK_KHR_win32_surface"
     let Number = 10
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -18926,6 +20089,8 @@ module KHRXcbSurface =
     let Name = "VK_KHR_xcb_surface"
     let Number = 6
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -18987,6 +20152,8 @@ module KHRXlibSurface =
     let Name = "VK_KHR_xlib_surface"
     let Number = 5
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -19048,6 +20215,8 @@ module MVKIosSurface =
     let Name = "VK_MVK_ios_surface"
     let Number = 123
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -19100,6 +20269,8 @@ module MVKMacosSurface =
     let Name = "VK_MVK_macos_surface"
     let Number = 124
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -19162,6 +20333,8 @@ module NNViSurface =
     let Name = "VK_NN_vi_surface"
     let Number = 63
     
+    let Required = [ KHRSurface.Name ]
+    open KHRSurface
     open EXTDebugReport
     
     
@@ -19292,6 +20465,8 @@ module NVComputeShaderDerivatives =
     let Name = "VK_NV_compute_shader_derivatives"
     let Number = 202
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -19332,26 +20507,28 @@ module NVCooperativeMatrix =
     let Name = "VK_NV_cooperative_matrix"
     let Number = 250
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     type VkScopeNV = 
-        | VkScopeDeviceNv = 1
-        | VkScopeWorkgroupNv = 2
-        | VkScopeSubgroupNv = 3
-        | VkScopeQueueFamilyNv = 5
+        | Device = 1
+        | Workgroup = 2
+        | Subgroup = 3
+        | QueueFamily = 5
     
     type VkComponentTypeNV = 
-        | VkComponentTypeFloat16Nv = 0
-        | VkComponentTypeFloat32Nv = 1
-        | VkComponentTypeFloat64Nv = 2
-        | VkComponentTypeSint8Nv = 3
-        | VkComponentTypeSint16Nv = 4
-        | VkComponentTypeSint32Nv = 5
-        | VkComponentTypeSint64Nv = 6
-        | VkComponentTypeUint8Nv = 7
-        | VkComponentTypeUint16Nv = 8
-        | VkComponentTypeUint32Nv = 9
-        | VkComponentTypeUint64Nv = 10
+        | Float16 = 0
+        | Float32 = 1
+        | Float64 = 2
+        | Sint8 = 3
+        | Sint16 = 4
+        | Sint32 = 5
+        | Sint64 = 6
+        | Uint8 = 7
+        | Uint16 = 8
+        | Uint32 = 9
+        | Uint64 = 10
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -19481,6 +20658,8 @@ module NVCornerSampledImage =
     let Name = "VK_NV_corner_sampled_image"
     let Number = 51
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -19522,10 +20701,10 @@ module NVFramebufferMixedSamples =
     open EXTDebugReport
     
     type VkCoverageModulationModeNV = 
-        | VkCoverageModulationModeNoneNv = 0
-        | VkCoverageModulationModeRgbNv = 1
-        | VkCoverageModulationModeAlphaNv = 2
-        | VkCoverageModulationModeRgbaNv = 3
+        | None = 0
+        | Rgb = 1
+        | Alpha = 2
+        | Rgba = 3
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -19577,11 +20756,13 @@ module NVCoverageReductionMode =
     let Name = "VK_NV_coverage_reduction_mode"
     let Number = 251
     
+    let Required = [ NVFramebufferMixedSamples.Name ]
+    open NVFramebufferMixedSamples
     open EXTDebugReport
     
     type VkCoverageReductionModeNV = 
-        | VkCoverageReductionModeMergeNv = 0
-        | VkCoverageReductionModeTruncateNv = 1
+        | Merge = 0
+        | Truncate = 1
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -19785,6 +20966,8 @@ module NVDedicatedAllocationImageAliasing =
     let Name = "VK_NV_dedicated_allocation_image_aliasing"
     let Number = 241
     
+    let Required = [ KHRDedicatedAllocation.Name ]
+    open KHRDedicatedAllocation
     open EXTDebugReport
     
     
@@ -19821,6 +21004,8 @@ module NVDeviceDiagnosticCheckpoints =
     let Name = "VK_NV_device_diagnostic_checkpoints"
     let Number = 207
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -19899,6 +21084,37 @@ module NVDeviceDiagnosticCheckpoints =
         let vkCmdSetCheckpointNV(commandBuffer : VkCommandBuffer, pCheckpointMarker : nativeint) = Loader<unit>.vkCmdSetCheckpointNV.Invoke(commandBuffer, pCheckpointMarker)
         let vkGetQueueCheckpointDataNV(queue : VkQueue, pCheckpointDataCount : nativeptr<uint32>, pCheckpointData : nativeptr<VkCheckpointDataNV>) = Loader<unit>.vkGetQueueCheckpointDataNV.Invoke(queue, pCheckpointDataCount, pCheckpointData)
 
+module NVExtension151 =
+    let Name = "VK_NV_extension_151"
+    let Number = 151
+    
+    open EXTDebugReport
+    
+    
+    
+    type VkFormatFeatureFlags with
+         static member inline Reserved29BitNv = unbox<VkFormatFeatureFlags> 536870912
+    type VkPipelineCreateFlags with
+         static member inline Extension151Bit0Nv = unbox<VkPipelineCreateFlags> 2048
+         static member inline Extension151Bit1Nv = unbox<VkPipelineCreateFlags> 16384
+         static member inline Extension151Bit2Nv = unbox<VkPipelineCreateFlags> 32768
+         static member inline Extension151Bit3Nv = unbox<VkPipelineCreateFlags> 65536
+         static member inline Extension151Bit4Nv = unbox<VkPipelineCreateFlags> 131072
+    
+
+module NVExtension291 =
+    let Name = "VK_NV_extension_291"
+    let Number = 291
+    
+    open EXTDebugReport
+    
+    
+    
+    type VkPipelineCreateFlags with
+         static member inline Extension291Bit0Nv = unbox<VkPipelineCreateFlags> 4096
+         static member inline Extension291Bit1Nv = unbox<VkPipelineCreateFlags> 8192
+    
+
 module NVExtension52 =
     let Name = "VK_NV_extension_52"
     let Number = 52
@@ -19922,17 +21138,17 @@ module NVExternalMemoryCapabilities =
     [<Flags>]
     type VkExternalMemoryHandleTypeFlagsNV = 
         | None = 0
-        | VkExternalMemoryHandleTypeOpaqueWin32BitNv = 0x00000001
-        | VkExternalMemoryHandleTypeOpaqueWin32KmtBitNv = 0x00000002
-        | VkExternalMemoryHandleTypeD3d11ImageBitNv = 0x00000004
-        | VkExternalMemoryHandleTypeD3d11ImageKmtBitNv = 0x00000008
+        | OpaqueWin32Bit = 0x00000001
+        | OpaqueWin32KmtBit = 0x00000002
+        | D3d11ImageBit = 0x00000004
+        | D3d11ImageKmtBit = 0x00000008
     
     [<Flags>]
     type VkExternalMemoryFeatureFlagsNV = 
         | None = 0
-        | VkExternalMemoryFeatureDedicatedOnlyBitNv = 0x00000001
-        | VkExternalMemoryFeatureExportableBitNv = 0x00000002
-        | VkExternalMemoryFeatureImportableBitNv = 0x00000004
+        | DedicatedOnlyBit = 0x00000001
+        | ExportableBit = 0x00000002
+        | ImportableBit = 0x00000004
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -19982,6 +21198,8 @@ module NVExternalMemory =
     let Name = "VK_NV_external_memory"
     let Number = 57
     
+    let Required = [ NVExternalMemoryCapabilities.Name ]
+    open NVExternalMemoryCapabilities
     open EXTDebugReport
     
     
@@ -20043,6 +21261,8 @@ module NVExternalMemoryWin32 =
     let Name = "VK_NV_external_memory_win32"
     let Number = 58
     
+    let Required = [ NVExternalMemory.Name ]
+    open NVExternalMemory
     open EXTDebugReport
     
     
@@ -20180,6 +21400,8 @@ module NVFragmentShaderBarycentric =
     let Name = "VK_NV_fragment_shader_barycentric"
     let Number = 204
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -20238,6 +21460,8 @@ module NVMeshShader =
     let Name = "VK_NV_mesh_shader"
     let Number = 203
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -20399,53 +21623,55 @@ module NVRayTracing =
     let Name = "VK_NV_ray_tracing"
     let Number = 166
     
-    open EXTDebugReport
+    let Required = [ KHRGetMemoryRequirements2.Name; KHRGetPhysicalDeviceProperties2.Name ]
     open KHRGetMemoryRequirements2
+    open KHRGetPhysicalDeviceProperties2
+    open EXTDebugReport
     
     type VkAccelerationStructureTypeNV = 
-        | VkAccelerationStructureTypeTopLevelNv = 0
-        | VkAccelerationStructureTypeBottomLevelNv = 1
+        | TopLevel = 0
+        | BottomLevel = 1
     
     type VkRayTracingShaderGroupTypeNV = 
-        | VkRayTracingShaderGroupTypeGeneralNv = 0
-        | VkRayTracingShaderGroupTypeTrianglesHitGroupNv = 1
-        | VkRayTracingShaderGroupTypeProceduralHitGroupNv = 2
+        | General = 0
+        | TrianglesHitGroup = 1
+        | ProceduralHitGroup = 2
     
     [<Flags>]
     type VkGeometryFlagsNV = 
         | None = 0
-        | VkGeometryOpaqueBitNv = 0x00000001
-        | VkGeometryNoDuplicateAnyHitInvocationBitNv = 0x00000002
+        | OpaqueBit = 0x00000001
+        | NoDuplicateAnyHitInvocationBit = 0x00000002
     
     [<Flags>]
     type VkGeometryInstanceFlagsNV = 
         | None = 0
-        | VkGeometryInstanceTriangleCullDisableBitNv = 0x00000001
-        | VkGeometryInstanceTriangleFrontCounterclockwiseBitNv = 0x00000002
-        | VkGeometryInstanceForceOpaqueBitNv = 0x00000004
-        | VkGeometryInstanceForceNoOpaqueBitNv = 0x00000008
+        | TriangleCullDisableBit = 0x00000001
+        | TriangleFrontCounterclockwiseBit = 0x00000002
+        | ForceOpaqueBit = 0x00000004
+        | ForceNoOpaqueBit = 0x00000008
     
     [<Flags>]
     type VkBuildAccelerationStructureFlagsNV = 
         | None = 0
-        | VkBuildAccelerationStructureAllowUpdateBitNv = 0x00000001
-        | VkBuildAccelerationStructureAllowCompactionBitNv = 0x00000002
-        | VkBuildAccelerationStructurePreferFastTraceBitNv = 0x00000004
-        | VkBuildAccelerationStructurePreferFastBuildBitNv = 0x00000008
-        | VkBuildAccelerationStructureLowMemoryBitNv = 0x00000010
+        | AllowUpdateBit = 0x00000001
+        | AllowCompactionBit = 0x00000002
+        | PreferFastTraceBit = 0x00000004
+        | PreferFastBuildBit = 0x00000008
+        | LowMemoryBit = 0x00000010
     
     type VkCopyAccelerationStructureModeNV = 
-        | VkCopyAccelerationStructureModeCloneNv = 0
-        | VkCopyAccelerationStructureModeCompactNv = 1
+        | Clone = 0
+        | Compact = 1
     
     type VkGeometryTypeNV = 
-        | VkGeometryTypeTrianglesNv = 0
-        | VkGeometryTypeAabbsNv = 1
+        | Triangles = 0
+        | Aabbs = 1
     
     type VkAccelerationStructureMemoryRequirementsTypeNV = 
-        | VkAccelerationStructureMemoryRequirementsTypeObjectNv = 0
-        | VkAccelerationStructureMemoryRequirementsTypeBuildScratchNv = 1
-        | VkAccelerationStructureMemoryRequirementsTypeUpdateScratchNv = 2
+        | Object = 0
+        | BuildScratch = 1
+        | UpdateScratch = 2
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -21098,6 +22324,8 @@ module NVScissorExclusive =
     let Name = "VK_NV_scissor_exclusive"
     let Number = 206
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -21177,6 +22405,8 @@ module NVShaderImageFootprint =
     let Name = "VK_NV_shader_image_footprint"
     let Number = 205
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     
@@ -21290,27 +22520,29 @@ module NVShadingRateImage =
     let Name = "VK_NV_shading_rate_image"
     let Number = 165
     
+    let Required = [ KHRGetPhysicalDeviceProperties2.Name ]
+    open KHRGetPhysicalDeviceProperties2
     open EXTDebugReport
     
     type VkShadingRatePaletteEntryNV = 
-        | VkShadingRatePaletteEntryNoInvocationsNv = 0
-        | VkShadingRatePaletteEntry16InvocationsPerPixelNv = 1
-        | VkShadingRatePaletteEntry8InvocationsPerPixelNv = 2
-        | VkShadingRatePaletteEntry4InvocationsPerPixelNv = 3
-        | VkShadingRatePaletteEntry2InvocationsPerPixelNv = 4
-        | VkShadingRatePaletteEntry1InvocationPerPixelNv = 5
-        | VkShadingRatePaletteEntry1InvocationPer2x1PixelsNv = 6
-        | VkShadingRatePaletteEntry1InvocationPer1x2PixelsNv = 7
-        | VkShadingRatePaletteEntry1InvocationPer2x2PixelsNv = 8
-        | VkShadingRatePaletteEntry1InvocationPer4x2PixelsNv = 9
-        | VkShadingRatePaletteEntry1InvocationPer2x4PixelsNv = 10
-        | VkShadingRatePaletteEntry1InvocationPer4x4PixelsNv = 11
+        | NoInvocations = 0
+        | D16InvocationsPerPixel = 1
+        | D8InvocationsPerPixel = 2
+        | D4InvocationsPerPixel = 3
+        | D2InvocationsPerPixel = 4
+        | D1InvocationPerPixel = 5
+        | D1InvocationPer2x1Pixels = 6
+        | D1InvocationPer1x2Pixels = 7
+        | D1InvocationPer2x2Pixels = 8
+        | D1InvocationPer4x2Pixels = 9
+        | D1InvocationPer2x4Pixels = 10
+        | D1InvocationPer4x4Pixels = 11
     
     type VkCoarseSampleOrderTypeNV = 
-        | VkCoarseSampleOrderTypeDefaultNv = 0
-        | VkCoarseSampleOrderTypeCustomNv = 1
-        | VkCoarseSampleOrderTypePixelMajorNv = 2
-        | VkCoarseSampleOrderTypeSampleMajorNv = 3
+        | Default = 0
+        | Custom = 1
+        | PixelMajor = 2
+        | SampleMajor = 3
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -21567,14 +22799,14 @@ module NVViewportSwizzle =
     open EXTDebugReport
     
     type VkViewportCoordinateSwizzleNV = 
-        | VkViewportCoordinateSwizzlePositiveXNv = 0
-        | VkViewportCoordinateSwizzleNegativeXNv = 1
-        | VkViewportCoordinateSwizzlePositiveYNv = 2
-        | VkViewportCoordinateSwizzleNegativeYNv = 3
-        | VkViewportCoordinateSwizzlePositiveZNv = 4
-        | VkViewportCoordinateSwizzleNegativeZNv = 5
-        | VkViewportCoordinateSwizzlePositiveWNv = 6
-        | VkViewportCoordinateSwizzleNegativeWNv = 7
+        | PositiveX = 0
+        | NegativeX = 1
+        | PositiveY = 2
+        | NegativeY = 3
+        | PositiveZ = 4
+        | NegativeZ = 5
+        | PositiveW = 6
+        | NegativeW = 7
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -21646,6 +22878,8 @@ module NVWin32KeyedMutex =
     let Name = "VK_NV_win32_keyed_mutex"
     let Number = 59
     
+    let Required = [ NVExternalMemoryWin32.Name ]
+    open NVExternalMemoryWin32
     open EXTDebugReport
     
     
@@ -21711,33 +22945,33 @@ module NVXDeviceGeneratedCommands =
     [<Flags>]
     type VkIndirectCommandsLayoutUsageFlagsNVX = 
         | None = 0
-        | VkIndirectCommandsLayoutUsageUnorderedSequencesBitNvx = 0x00000001
-        | VkIndirectCommandsLayoutUsageSparseSequencesBitNvx = 0x00000002
-        | VkIndirectCommandsLayoutUsageEmptyExecutionsBitNvx = 0x00000004
-        | VkIndirectCommandsLayoutUsageIndexedSequencesBitNvx = 0x00000008
+        | UnorderedSequencesBit = 0x00000001
+        | SparseSequencesBit = 0x00000002
+        | EmptyExecutionsBit = 0x00000004
+        | IndexedSequencesBit = 0x00000008
     
     type VkIndirectCommandsTokenTypeNVX = 
-        | VkIndirectCommandsTokenTypePipelineNvx = 0
-        | VkIndirectCommandsTokenTypeDescriptorSetNvx = 1
-        | VkIndirectCommandsTokenTypeIndexBufferNvx = 2
-        | VkIndirectCommandsTokenTypeVertexBufferNvx = 3
-        | VkIndirectCommandsTokenTypePushConstantNvx = 4
-        | VkIndirectCommandsTokenTypeDrawIndexedNvx = 5
-        | VkIndirectCommandsTokenTypeDrawNvx = 6
-        | VkIndirectCommandsTokenTypeDispatchNvx = 7
+        | Pipeline = 0
+        | DescriptorSet = 1
+        | IndexBuffer = 2
+        | VertexBuffer = 3
+        | PushConstant = 4
+        | DrawIndexed = 5
+        | Draw = 6
+        | Dispatch = 7
     
     [<Flags>]
     type VkObjectEntryUsageFlagsNVX = 
         | None = 0
-        | VkObjectEntryUsageGraphicsBitNvx = 0x00000001
-        | VkObjectEntryUsageComputeBitNvx = 0x00000002
+        | GraphicsBit = 0x00000001
+        | ComputeBit = 0x00000002
     
     type VkObjectEntryTypeNVX = 
-        | VkObjectEntryTypeDescriptorSetNvx = 0
-        | VkObjectEntryTypePipelineNvx = 1
-        | VkObjectEntryTypeIndexBufferNvx = 2
-        | VkObjectEntryTypeVertexBufferNvx = 3
-        | VkObjectEntryTypePushConstantNvx = 4
+        | DescriptorSet = 0
+        | Pipeline = 1
+        | IndexBuffer = 2
+        | VertexBuffer = 3
+        | PushConstant = 4
     
     
     [<StructLayout(LayoutKind.Sequential)>]
@@ -22322,6 +23556,8 @@ module NVXMultiviewPerViewAttributes =
     let Name = "VK_NVX_multiview_per_view_attributes"
     let Number = 98
     
+    let Required = [ KHRMultiview.Name ]
+    open KHRMultiview
     open EXTDebugReport
     
     

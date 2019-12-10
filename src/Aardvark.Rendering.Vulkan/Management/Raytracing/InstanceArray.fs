@@ -56,7 +56,7 @@ type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
 
         VkGeometryInstance(
             trafo, index, 0xffuy, hitGroup,
-            VkGeometryInstanceFlagsNV.VkGeometryInstanceTriangleCullDisableBitNv,
+            VkGeometryInstanceFlagsNV.TriangleCullDisableBit,
             unbox obj.Geometry.Handle
         )
 

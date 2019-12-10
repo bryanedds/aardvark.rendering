@@ -76,7 +76,7 @@ module private DummyHelpers =
             shaderParams.samplers |> map (fun _ sampler ->
                 let partiallyBound =
                     if sampler.samplerCount > 1 then
-                        VkDescriptorBindingFlagsEXT.VkDescriptorBindingPartiallyBoundBitExt
+                        VkDescriptorBindingFlagsEXT.PartiallyBoundBit
                     else
                         VkDescriptorBindingFlagsEXT.None
 

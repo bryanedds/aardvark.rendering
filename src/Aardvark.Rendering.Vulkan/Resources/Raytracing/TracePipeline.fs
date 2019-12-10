@@ -29,11 +29,11 @@ module ShaderGroupCreateInfo =
         | Raygen _ 
         | Miss _
         | Callable _ ->
-            VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeGeneralNv
+            VkRayTracingShaderGroupTypeNV.General
         | HitGroup (_, _, None) ->
-            VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeTrianglesHitGroupNv
+            VkRayTracingShaderGroupTypeNV.TrianglesHitGroup
         | HitGroup (_, _, Some _) ->
-            VkRayTracingShaderGroupTypeNV.VkRayTracingShaderGroupTypeProceduralHitGroupNv
+            VkRayTracingShaderGroupTypeNV.ProceduralHitGroup
 
     let getGeneralShader = function
         | Raygen g 

@@ -86,15 +86,15 @@ module private AccelerationStructureInfo =
     let create (pGeometries : nativeptr<VkGeometryNV>) (geometryCount : int) (instanceCount : int) =
         let kind =
             if geometryCount = 0 then
-                VkAccelerationStructureTypeNV.VkAccelerationStructureTypeTopLevelNv
+                VkAccelerationStructureTypeNV.TopLevel
             else
-                VkAccelerationStructureTypeNV.VkAccelerationStructureTypeBottomLevelNv
+                VkAccelerationStructureTypeNV.BottomLevel
 
         let info =
             VkAccelerationStructureInfoNV(
                 VkStructureType.AccelerationStructureInfoNv, 0n, kind,
-                VkBuildAccelerationStructureFlagsNV.VkBuildAccelerationStructurePreferFastTraceBitNv |||
-                VkBuildAccelerationStructureFlagsNV.VkBuildAccelerationStructureAllowUpdateBitNv,
+                VkBuildAccelerationStructureFlagsNV.PreferFastTraceBit |||
+                VkBuildAccelerationStructureFlagsNV.AllowUpdateBit,
                 uint32 instanceCount, uint32 geometryCount, pGeometries
             )
 
@@ -119,17 +119,17 @@ module private AccelerationStructureInfo =
 
             VkGeometryNV(
                 VkStructureType.GeometryNv, 0n,
-                VkGeometryTypeNV.VkGeometryTypeTrianglesNv,
+                VkGeometryTypeNV.Triangles,
                 VkGeometryDataNV(triangles,
                     VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n, VkBuffer.Null, 0u, 0u, 0UL)
                 ),
-                VkGeometryFlagsNV.VkGeometryOpaqueBitNv
+                VkGeometryFlagsNV.OpaqueBit
             )
 
         let createAABB (buffer : IBuffer<'a>) =
             VkGeometryNV(
                 VkStructureType.GeometryNv, 0n,
-                VkGeometryTypeNV.VkGeometryTypeAabbsNv,
+                VkGeometryTypeNV.Aabbs,
                 VkGeometryDataNV(
                     VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
                         VkBuffer.Null, 0UL, 0u, 0UL, VkFormat.Undefined,
@@ -138,7 +138,7 @@ module private AccelerationStructureInfo =
                     VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n,
                         getBufferHandle buffer.Buffer, uint32 buffer.Count, uint32 sizeof<'a>, uint64 buffer.Offset)
                 ),
-                VkGeometryFlagsNV.VkGeometryOpaqueBitNv
+                VkGeometryFlagsNV.OpaqueBit
             )
 
         let ptr = NativePtr.alloc<VkGeometryNV> desc.geometries.Length
@@ -180,8 +180,8 @@ module AccelerationStructure =
             }
 
         let build, update =
-            get VkAccelerationStructureMemoryRequirementsTypeNV.VkAccelerationStructureMemoryRequirementsTypeBuildScratchNv,
-            get VkAccelerationStructureMemoryRequirementsTypeNV.VkAccelerationStructureMemoryRequirementsTypeUpdateScratchNv
+            get VkAccelerationStructureMemoryRequirementsTypeNV.BuildScratch,
+            get VkAccelerationStructureMemoryRequirementsTypeNV.UpdateScratch
 
         // Build and update should require the same type of memory
         // but may differ in size? So we take the larger one as scratch
@@ -189,7 +189,7 @@ module AccelerationStructure =
         assert (build.alignment = update.alignment)
         assert (build.memoryTypeBits = update.memoryTypeBits)
 
-        get VkAccelerationStructureMemoryRequirementsTypeNV.VkAccelerationStructureMemoryRequirementsTypeObjectNv,
+        get VkAccelerationStructureMemoryRequirementsTypeNV.Object,
         if build.size > update.size then build else update
 
     let private bindResultMemory (s : AccelerationStructure) =
