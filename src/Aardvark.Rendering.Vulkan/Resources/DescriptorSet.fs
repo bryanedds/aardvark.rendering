@@ -45,7 +45,6 @@ module DescriptorSet =
                     let! pLayoutHandle = layout.Handle
                     let! pInfo =
                         VkDescriptorSetAllocateInfo(
-                            VkStructureType.DescriptorSetAllocateInfo, 0n, 
                             pool.Handle, 
                             1u, 
                             pLayoutHandle
@@ -111,7 +110,6 @@ module DescriptorSet =
 
                             [|
                                 VkWriteDescriptorSet(
-                                    VkStructureType.WriteDescriptorSet, 0n,
                                     set.Handle,
                                     uint32 binding,
                                     0u, 1u, VkDescriptorType.StorageBuffer,
@@ -135,7 +133,6 @@ module DescriptorSet =
 
                             [|
                                 VkWriteDescriptorSet(
-                                    VkStructureType.WriteDescriptorSet, 0n,
                                     set.Handle,
                                     uint32 binding,
                                     0u, 1u, VkDescriptorType.UniformBuffer,
@@ -159,7 +156,6 @@ module DescriptorSet =
                                 imageInfos <- NativePtr.step 1 imageInfos
 
                                 VkWriteDescriptorSet(
-                                    VkStructureType.WriteDescriptorSet, 0n,
                                     set.Handle,
                                     uint32 binding,
                                     uint32 i, 1u, VkDescriptorType.CombinedImageSampler,
@@ -183,7 +179,6 @@ module DescriptorSet =
                             
                             let write = 
                                 VkWriteDescriptorSet(
-                                    VkStructureType.WriteDescriptorSet, 0n,
                                     set.Handle,
                                     uint32 binding,
                                     0u, 1u, VkDescriptorType.StorageImage,
@@ -201,7 +196,7 @@ module DescriptorSet =
 
                             let writeAccelerationStructure =
                                 VkWriteDescriptorSetAccelerationStructureNV(
-                                    VkStructureType.WriteDescriptorSetAccelerationStructureNv, 0n, 1u, pHandle
+                                    1u, pHandle
                                 )
                             
                             NativePtr.write accelerationStructureWrites writeAccelerationStructure
@@ -210,7 +205,7 @@ module DescriptorSet =
 
                             let write = 
                                 VkWriteDescriptorSet(
-                                    VkStructureType.WriteDescriptorSet, NativePtr.toNativeInt ptr,
+                                    NativePtr.toNativeInt ptr,
                                     set.Handle,
                                     uint32 binding,
                                     0u, 1u, VkDescriptorType.AccelerationStructureNv,

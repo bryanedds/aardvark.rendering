@@ -404,7 +404,6 @@ module ``Compute Commands`` =
                     native {
                         let! pImageMemoryBarrier =
                             VkImageMemoryBarrier(
-                                VkStructureType.ImageMemoryBarrier, 0n,
                                 src, dst,
                                 VkImageLayout.General, VkImageLayout.General,
                                 VK_QUEUE_FAMILY_IGNORED,
@@ -443,7 +442,9 @@ module ``Compute Commands`` =
         open Aardvark.Base.Monads.State
 
         [<AutoOpen>]
-        module private Compiler = 
+        module private Compiler =
+            open KHRSwapchain
+
             type CompilerState =
                 {
                     device          : Device
@@ -543,7 +544,6 @@ module ``Compute Commands`` =
 
                     let barrier =
                         VkImageMemoryBarrier(
-                            VkStructureType.ImageMemoryBarrier, 0n, 
                             src,
                             dst,
                             source,
@@ -608,7 +608,6 @@ module ``Compute Commands`` =
                         
                     let barrier =
                         VkImageMemoryBarrier(
-                            VkStructureType.ImageMemoryBarrier, 0n, 
                             src,
                             dst,
                             source,
@@ -630,7 +629,6 @@ module ``Compute Commands`` =
 
                     let barrier =
                         VkBufferMemoryBarrier(
-                            VkStructureType.BufferMemoryBarrier, 0n,
                             src,
                             dst,
                             VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
@@ -698,7 +696,6 @@ module ``Compute Commands`` =
                         [||],
                         [|
                             VkImageMemoryBarrier(
-                                VkStructureType.ImageMemoryBarrier, 0n,
                                 src, dst,
                                 VkImageLayout.General, VkImageLayout.General,
                                 VK_QUEUE_FAMILY_IGNORED,
@@ -1081,7 +1078,6 @@ module ComputeShader =
             native {
                 let shaderInfo =
                     VkPipelineShaderStageCreateInfo(
-                        VkStructureType.PipelineShaderStageCreateInfo, 0n,
                         VkPipelineShaderStageCreateFlags.MinValue,
                         VkShaderStageFlags.ComputeBit,
                         module_.Handle,
@@ -1091,7 +1087,6 @@ module ComputeShader =
 
                 let! pPipelineInfo =
                     VkComputePipelineCreateInfo(
-                        VkStructureType.ComputePipelineCreateInfo, 0n,
                         VkPipelineCreateFlags.None,
                         shaderInfo,
                         layout.Handle,
@@ -1174,7 +1169,6 @@ module ComputeShader =
 
                 let shaderInfo =
                     VkPipelineShaderStageCreateInfo(
-                        VkStructureType.PipelineShaderStageCreateInfo, 0n,
                         VkPipelineShaderStageCreateFlags.MinValue,
                         VkShaderStageFlags.ComputeBit,
                         sm.Handle,
@@ -1185,7 +1179,6 @@ module ComputeShader =
                 native {
                     let! pPipelineInfo =
                         VkComputePipelineCreateInfo(
-                            VkStructureType.ComputePipelineCreateInfo, 0n,
                             VkPipelineCreateFlags.None,
                             shaderInfo,
                             layout.Handle,

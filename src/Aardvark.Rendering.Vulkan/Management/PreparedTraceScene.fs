@@ -140,7 +140,6 @@ module private DummyHelpers =
 
                 let! pInfo =
                     VkPipelineLayoutCreateInfo(
-                        VkStructureType.PipelineLayoutCreateInfo, 0n,
                         VkPipelineLayoutCreateFlags.MinValue, 1u, pLayout, 0u, NativePtr.zero
                     )
 

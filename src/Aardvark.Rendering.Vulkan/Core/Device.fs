@@ -195,7 +195,6 @@ type Device internal(dev : PhysicalDevice, wantedExtensions : list<string>) as t
                 |> Dictionary.toArray 
                 |> Array.map (fun (familyIndex, count) ->
                     VkDeviceQueueCreateInfo(
-                        VkStructureType.DeviceQueueCreateInfo, 0n,
                         VkDeviceQueueCreateFlags.MinValue,
                         uint32 familyIndex,
                         uint32 count,
@@ -210,15 +209,10 @@ type Device internal(dev : PhysicalDevice, wantedExtensions : list<string>) as t
 
             let mutable features, indexingFeatures =
                 native {
-                    let mutable indexingFeatures = VkPhysicalDeviceDescriptorIndexingFeaturesEXT()
-                    indexingFeatures.sType <- VkStructureType.PhysicalDeviceDescriptorIndexingFeaturesExt
-                    indexingFeatures.pNext <- 0n
-
-                    let! pIndexingFeatures = indexingFeatures
+                    let! pIndexingFeatures = VkPhysicalDeviceDescriptorIndexingFeaturesEXT.Empty
 
                     let! pFeatures2 =
                         VkPhysicalDeviceFeatures2(
-                            VkStructureType.PhysicalDeviceFeatures2,
                             NativePtr.toNativeInt pIndexingFeatures,
                             VkPhysicalDeviceFeatures()
                         )
@@ -234,8 +228,6 @@ type Device internal(dev : PhysicalDevice, wantedExtensions : list<string>) as t
             let! pDevices = deviceHandles
             let! pGroupInfo =
                 VkDeviceGroupDeviceCreateInfo(
-                    VkStructureType.DeviceGroupDeviceCreateInfo,
-                    0n,
                     uint32 deviceGroup.Length,
                     pDevices
                 )
@@ -249,7 +241,7 @@ type Device internal(dev : PhysicalDevice, wantedExtensions : list<string>) as t
             let! pFeatures = features
             let! pInfo =
                 VkDeviceCreateInfo(
-                    VkStructureType.DeviceCreateInfo, next,
+                    next,
                     VkDeviceCreateFlags.MinValue,
                     uint32 queueInfos.Length, ptr,
                     0u, NativePtr.zero,
@@ -706,7 +698,6 @@ and CopyEngine(family : DeviceQueueFamily) =
                                 [||],
                                 [|
                                     VkBufferMemoryBarrier(
-                                        VkStructureType.BufferMemoryBarrier, 0n,
                                         VkAccessFlags.TransferWriteBit,
                                         VkAccessFlags.None,
                                         uint32 familyIndex,
@@ -726,7 +717,6 @@ and CopyEngine(family : DeviceQueueFamily) =
                                 [||],
                                 [|
                                     VkImageMemoryBarrier(
-                                        VkStructureType.ImageMemoryBarrier, 0n,
                                         VkAccessFlags.TransferWriteBit,
                                         VkAccessFlags.None,
                                         srcLayout, dstLayout,
@@ -746,7 +736,6 @@ and CopyEngine(family : DeviceQueueFamily) =
                                 [||],
                                 [|
                                     VkImageMemoryBarrier(
-                                        VkStructureType.ImageMemoryBarrier, 0n,
                                         VkImageLayout.toAccessFlags srcLayout,
                                         VkImageLayout.toAccessFlags dstLayout,
                                         srcLayout, dstLayout,
@@ -766,7 +755,6 @@ and CopyEngine(family : DeviceQueueFamily) =
                                 [||],
                                 [|
                                     VkImageMemoryBarrier(
-                                        VkStructureType.ImageMemoryBarrier, 0n,
                                         srcAccess,
                                         VkAccessFlags.None,
                                         layout, layout,
@@ -783,7 +771,6 @@ and CopyEngine(family : DeviceQueueFamily) =
                 cmd.Handle |> pin (fun pCmd ->
                     let submit =
                         VkSubmitInfo(
-                            VkStructureType.SubmitInfo, 0n,
                             0u, NativePtr.zero, NativePtr.zero,
                             1u, pCmd,
                             0u, NativePtr.zero
@@ -996,9 +983,7 @@ and DeviceQueue internal(device : Device, deviceHandle : VkDevice, familyInfo : 
                     binds |> Array.collect (fun b ->
                         device.AllIndicesArr |> Array.map (fun i ->
                             VkDeviceGroupBindSparseInfo(
-                                VkStructureType.DeviceGroupBindSparseInfo, 0n,
-                                uint32 i,
-                                uint32 i
+                                uint32 i, uint32 i
                             )
                         )
                     )
@@ -1057,7 +1042,6 @@ and DeviceQueue internal(device : Device, deviceHandle : VkDevice, familyInfo : 
 
                     let ext =
                         VkDeviceGroupSubmitInfo(
-                            VkStructureType.DeviceGroupSubmitInfo, 0n, 
                             waitCount, pWaitIndices,
                             uint32 cmds.Length, pCmdMasks,
                             signalCount, pSignalIndices
@@ -1066,7 +1050,7 @@ and DeviceQueue internal(device : Device, deviceHandle : VkDevice, familyInfo : 
 
                         let submit =
                             VkSubmitInfo(
-                                VkStructureType.SubmitInfo, NativePtr.toNativeInt pExt,
+                                NativePtr.toNativeInt pExt,
                                 uint32 waitFor.Length, pWaitFor, NativePtr.cast pMasks,
                                 uint32 cmds.Length, pCmds,
                                 uint32 signal.Length, pSignal
@@ -1080,7 +1064,6 @@ and DeviceQueue internal(device : Device, deviceHandle : VkDevice, familyInfo : 
                 else
                     let submit =
                         VkSubmitInfo(
-                            VkStructureType.SubmitInfo, 0n,
                             uint32 waitFor.Length, pWaitFor, NativePtr.cast pMasks,
                             uint32 cmds.Length, pCmds,
                             uint32 signal.Length, pSignal
@@ -1337,7 +1320,6 @@ and DeviceCommandPool internal(device : Device, index : int, queueFamily : Devic
     let createCommandPoolHandle _ =
         let createInfo =
             VkCommandPoolCreateInfo(
-                VkStructureType.CommandPoolCreateInfo, 0n,
                 VkCommandPoolCreateFlags.ResetCommandBufferBit,
                 uint32 index
             )
@@ -1386,7 +1368,6 @@ and CommandPool internal(device : Device, familyIndex : int, queueFamily : Devic
     let mutable handle =
         let createInfo =
             VkCommandPoolCreateInfo(
-                VkStructureType.CommandPoolCreateInfo, 0n,
                 VkCommandPoolCreateFlags.ResetCommandBufferBit,
                 uint32 familyIndex
             )
@@ -1421,7 +1402,6 @@ and CommandBuffer internal(device : Device, pool : VkCommandPool, queueFamily : 
         native {
             let! pInfo =
                 VkCommandBufferAllocateInfo(
-                    VkStructureType.CommandBufferAllocateInfo, 0n,
                     pool,
                     unbox (int level),
                     1u
@@ -1454,7 +1434,6 @@ and CommandBuffer internal(device : Device, pool : VkCommandPool, queueFamily : 
             cleanup()
             let! pInh =
                 VkCommandBufferInheritanceInfo(
-                    VkStructureType.CommandBufferInheritanceInfo, 0n,
                     VkRenderPass.Null, 0u,
                     VkFramebuffer.Null, 
                     0u,
@@ -1464,7 +1443,6 @@ and CommandBuffer internal(device : Device, pool : VkCommandPool, queueFamily : 
             let! pNext =
                 if device.AllCount > 1u then
                     VkDeviceGroupCommandBufferBeginInfo(
-                        VkStructureType.DeviceGroupCommandBufferBeginInfo, 0n,
                         device.AllMask
                     ) |> Some
                 else 
@@ -1472,7 +1450,7 @@ and CommandBuffer internal(device : Device, pool : VkCommandPool, queueFamily : 
 
             let! pInfo =
                 VkCommandBufferBeginInfo(
-                    VkStructureType.CommandBufferBeginInfo, NativePtr.toNativeInt pNext,
+                    NativePtr.toNativeInt pNext,
                     unbox (int usage),
                     pInh
                 )
@@ -1487,7 +1465,6 @@ and CommandBuffer internal(device : Device, pool : VkCommandPool, queueFamily : 
         cleanup()
         let inh =
             VkCommandBufferInheritanceInfo(
-                VkStructureType.CommandBufferInheritanceInfo, 0n,
                 pass.Handle, 0u,
                 VkFramebuffer.Null, 
                 0u,
@@ -1498,7 +1475,6 @@ and CommandBuffer internal(device : Device, pool : VkCommandPool, queueFamily : 
         inh |> pin (fun pInh ->
             let info =
                 VkCommandBufferBeginInfo(
-                    VkStructureType.CommandBufferBeginInfo, 0n,
                     unbox (int usage),
                     pInh
                 )
@@ -1515,7 +1491,6 @@ and CommandBuffer internal(device : Device, pool : VkCommandPool, queueFamily : 
         cleanup()
         let inh =
             VkCommandBufferInheritanceInfo(
-                VkStructureType.CommandBufferInheritanceInfo, 0n,
                 pass.Handle, 0u,
                 framebuffer.Handle, 
                 0u,
@@ -1526,7 +1501,6 @@ and CommandBuffer internal(device : Device, pool : VkCommandPool, queueFamily : 
         inh |> pin (fun pInh ->
             let info =
                 VkCommandBufferBeginInfo(
-                    VkStructureType.CommandBufferBeginInfo, 0n,
                     unbox (int usage),
                     pInh
                 )
@@ -1633,7 +1607,6 @@ and Fence internal(device : Device, signaled : bool) =
         native {
             let! pInfo =
                 VkFenceCreateInfo(
-                    VkStructureType.FenceCreateInfo, 0n,
                     (if signaled then VkFenceCreateFlags.SignaledBit else VkFenceCreateFlags.None)
                 )
             VkRaw.vkCreateFence(device.Handle, pInfo, NativePtr.zero, pFence)
@@ -1721,11 +1694,8 @@ and Semaphore internal(device : Device) =
 
 
     let mutable handle = 
-        let info =
-            VkSemaphoreCreateInfo(
-                VkStructureType.SemaphoreCreateInfo, 0n,
-                VkSemaphoreCreateFlags.MinValue
-            )
+        let info = VkSemaphoreCreateInfo.Empty
+
         info |> pin (fun pInfo ->
             temporary<VkSemaphore, VkSemaphore> (fun pHandle ->
                 VkRaw.vkCreateSemaphore(device.Handle, pInfo, NativePtr.zero, pHandle)
@@ -1754,11 +1724,8 @@ and Semaphore internal(device : Device) =
 and Event internal(device : Device) =
 
     let mutable handle =
-        let info =
-            VkEventCreateInfo(
-                VkStructureType.EventCreateInfo, 0n,
-                VkEventCreateFlags.MinValue
-            )
+        let info = VkEventCreateInfo.Empty
+
         info |> pin (fun pInfo ->
             temporary<VkEvent, VkEvent> (fun pHandle ->
                 VkRaw.vkCreateEvent(device.Handle, pInfo, NativePtr.zero, pHandle)
@@ -1807,7 +1774,6 @@ and DeviceHeap internal(device : Device, physical : PhysicalDevice, memory : Mem
 
         let info =
             VkMemoryAllocateInfo(
-                VkStructureType.MemoryAllocateInfo, 0n, 
                 16UL,
                 uint32 memory.index
             )
@@ -1871,7 +1837,6 @@ and DeviceHeap internal(device : Device, physical : PhysicalDevice, memory : Mem
             if heap.TryAdd size then
                 let info =
                     VkMemoryAllocateInfo(
-                        VkStructureType.MemoryAllocateInfo, 0n,
                         uint64 size,
                         uint32 memory.index
                     )
@@ -2248,7 +2213,7 @@ and [<AllowNullLiteral>] DevicePtr internal(memory : DeviceMemory, offset : int6
                 f ptr
             finally 
                 if not memory.Heap.IsHostCoherent then
-                    let range = VkMappedMemoryRange(VkStructureType.MappedMemoryRange, 0n, memory.Handle, uint64 x.Offset, uint64 x.Size)
+                    let range = VkMappedMemoryRange(memory.Handle, uint64 x.Offset, uint64 x.Size)
                     range |> pin (fun pRange ->
                         VkRaw.vkFlushMappedMemoryRanges(device.Handle, 1u, pRange)
                             |> check "could not flush memory range"
@@ -2473,7 +2438,6 @@ and DeviceQueueThread(family : DeviceQueueFamily) =
                 let! pExt = 
                     [|
                         VkDeviceGroupSubmitInfo(
-                            VkStructureType.DeviceGroupSubmitInfo, 0n, 
                             waitCount, pWaitIndices,
                             uint32 cmds.Length, pCmdMasks,
                             signalCount, pSignalIndices
@@ -2483,7 +2447,7 @@ and DeviceQueueThread(family : DeviceQueueFamily) =
                 let! pSubmit = 
                     [|
                         VkSubmitInfo(
-                            VkStructureType.SubmitInfo, NativePtr.toNativeInt pExt,
+                            NativePtr.toNativeInt pExt,
                             uint32 waitFor.Length, pWaitFor, NativePtr.cast pMasks,
                             uint32 cmds.Length, pCmds,
                             uint32 signal.Length, pSignal
@@ -2497,7 +2461,6 @@ and DeviceQueueThread(family : DeviceQueueFamily) =
                 let! pSubmit = 
                     [|
                         VkSubmitInfo(
-                            VkStructureType.SubmitInfo, 0n,
                             uint32 waitFor.Length, pWaitFor, NativePtr.cast pMasks,
                             uint32 cmds.Length, pCmds,
                             uint32 signal.Length, pSignal
@@ -2562,9 +2525,7 @@ and DeviceQueueThread(family : DeviceQueueFamily) =
                 let! pGroupInfos = 
                     Array.init deviceCount (fun di ->
                         VkDeviceGroupBindSparseInfo(
-                            VkStructureType.DeviceGroupBindSparseInfo, 0n,
-                            uint32 di,
-                            uint32 di
+                            uint32 di, uint32 di
                         )
                     )
 
@@ -2572,7 +2533,7 @@ and DeviceQueueThread(family : DeviceQueueFamily) =
                     Array.init deviceCount (fun di ->
                         let next = NativePtr.add pGroupInfos di
                         VkBindSparseInfo(
-                            VkStructureType.BindSparseInfo, NativePtr.toNativeInt next,
+                            NativePtr.toNativeInt next,
                             0u, NativePtr.zero,
                             uint32 bufferBinds.Length, pBufferBindInfos,
                             0u, NativePtr.zero,
@@ -2587,7 +2548,6 @@ and DeviceQueueThread(family : DeviceQueueFamily) =
             else
                 let bindInfo =
                     VkBindSparseInfo(
-                        VkStructureType.BindSparseInfo, 0n,
                         0u, NativePtr.zero,
                         uint32 bufferBinds.Length, pBufferBindInfos,
                         0u, NativePtr.zero,
@@ -2624,7 +2584,6 @@ and DeviceQueueThread(family : DeviceQueueFamily) =
             let! pInfo =
                 [|
                     VkPresentInfoKHR(
-                        VkStructureType.PresentInfoKhr, 0n, 
                         0u, NativePtr.zero,
                         1u, pHandle,
                         pArr,

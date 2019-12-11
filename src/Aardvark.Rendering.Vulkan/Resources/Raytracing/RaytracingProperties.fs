@@ -11,16 +11,12 @@ module RaytracingProperties =
     
     let get (device : Device) =
         native {
-            let! pRayTracingProperties =
-                VkPhysicalDeviceRayTracingPropertiesNV(
-                    VkStructureType.PhysicalDeviceRayTracingPropertiesNv, 0n,
-                    0u, 0u, 0u, 0u, 0UL, 0UL, 0UL, 0u
-                )
+            let! pRayTracingProperties = VkPhysicalDeviceRayTracingPropertiesNV.Empty
 
             let! pProperties =
                 VkPhysicalDeviceProperties2(
-                    VkStructureType.PhysicalDeviceProperties2, NativePtr.toNativeInt pRayTracingProperties,
-                    VkPhysicalDeviceProperties()
+                    NativePtr.toNativeInt pRayTracingProperties,
+                    VkPhysicalDeviceProperties.Empty
                 )
 
             VkRaw.vkGetPhysicalDeviceProperties2(device.PhysicalDevice.Handle, pProperties)

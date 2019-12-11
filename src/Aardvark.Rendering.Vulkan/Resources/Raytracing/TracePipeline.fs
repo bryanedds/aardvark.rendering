@@ -102,7 +102,6 @@ module TracePipeline =
                 let! pName = "main"
                 let! pStages = desc.stages |> Array.map (fun s ->
                     VkPipelineShaderStageCreateInfo(
-                        VkStructureType.PipelineShaderStageCreateInfo, 0n,
                         VkPipelineShaderStageCreateFlags.MinValue,
                         VkShaderStageFlags.ofShaderStage s.Stage,
                         s.Handle,
@@ -112,7 +111,6 @@ module TracePipeline =
 
                 let! pGroups = desc.groups |> Array.map (fun g ->
                     VkRayTracingShaderGroupCreateInfoNV(
-                        VkStructureType.RayTracingShaderGroupCreateInfoNv, 0n,
                         ShaderGroupCreateInfo.getType g,
                         ShaderGroupCreateInfo.getGeneralShader g,
                         ShaderGroupCreateInfo.getClosestHitShader g,
@@ -128,7 +126,6 @@ module TracePipeline =
                 
                 let! pInfo =
                     VkRayTracingPipelineCreateInfoNV(
-                        VkStructureType.RayTracingPipelineCreateInfoNv, 0n,
                         VkPipelineCreateFlags.AllowDerivativesBit ||| derivativeFlag,
                         uint32 desc.stages.Length, pStages, 
                         uint32 desc.groups.Length, pGroups,

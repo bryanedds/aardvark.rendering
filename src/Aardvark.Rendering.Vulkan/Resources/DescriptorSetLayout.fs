@@ -74,13 +74,12 @@ module DescriptorSetLayout =
                 bindings |> Array.iteri (fun i b -> pFlags.[i] <- b.Flags)
                 let! pExtendedInfo =
                     VkDescriptorSetLayoutBindingFlagsCreateInfoEXT(
-                        VkStructureType.DescriptorSetLayoutBindingFlagsCreateInfoExt, 0n,
                         uint32 bindings.Length, pFlags
                     )
 
                 let! pInfo =
                     VkDescriptorSetLayoutCreateInfo(
-                        VkStructureType.DescriptorSetLayoutCreateInfo, NativePtr.toNativeInt pExtendedInfo,
+                        NativePtr.toNativeInt pExtendedInfo,
                         VkDescriptorSetLayoutCreateFlags.MinValue,
                         uint32 bindings.Length,
                         pArr

@@ -210,7 +210,6 @@ module ShaderBindingTable =
 
         let info =
             VkBufferCreateInfo(
-                VkStructureType.BufferCreateInfo, 0n,
                 VkBufferCreateFlags.None,
                 uint64 totalSize, flags,
                 VkSharingMode.Exclusive,

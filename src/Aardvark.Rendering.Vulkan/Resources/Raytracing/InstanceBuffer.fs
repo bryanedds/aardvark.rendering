@@ -49,7 +49,6 @@ module InstanceBuffer =
         if size > 0 then
             let info =
                 VkBufferCreateInfo(
-                    VkStructureType.BufferCreateInfo, 0n,
                     VkBufferCreateFlags.None,
                     uint64 size,
                     flags,

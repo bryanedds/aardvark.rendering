@@ -24,7 +24,6 @@ module private ShaderPoolHelpers =
                 let! pCode = code
                 let! pInfo =
                     VkShaderModuleCreateInfo(
-                        VkStructureType.ShaderModuleCreateInfo, 0n, 
                         VkShaderModuleCreateFlags.MinValue, 
                         uint64 code.Length, NativePtr.cast pCode
                     )

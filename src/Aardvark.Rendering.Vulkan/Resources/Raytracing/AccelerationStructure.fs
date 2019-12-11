@@ -92,7 +92,7 @@ module private AccelerationStructureInfo =
 
         let info =
             VkAccelerationStructureInfoNV(
-                VkStructureType.AccelerationStructureInfoNv, 0n, kind,
+                kind,
                 VkBuildAccelerationStructureFlagsNV.PreferFastTraceBit |||
                 VkBuildAccelerationStructureFlagsNV.AllowUpdateBit,
                 uint32 instanceCount, uint32 geometryCount, pGeometries
@@ -108,35 +108,31 @@ module private AccelerationStructureInfo =
             let triangles =
                 match ib with
                     | None ->
-                        VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
+                        VkGeometryTrianglesNV(
                             getBufferHandle vb.buffer, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
-                            VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, VkBuffer.Null, 0UL)
+                            VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv, VkBuffer.Null, 0UL
+                        )
                     | Some ib ->
-                        VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
+                        VkGeometryTrianglesNV(
                             getBufferHandle vb.buffer, uint64 vb.offset, uint32 vb.count, getStride vb.format, getFormat vb.format,
                             getBufferHandle ib.buffer, uint64 ib.offset, uint32 ib.count, getIndexType ib.format,
-                            VkBuffer.Null, 0UL)
+                            VkBuffer.Null, 0UL
+                        )
 
             VkGeometryNV(
-                VkStructureType.GeometryNv, 0n,
                 VkGeometryTypeNV.Triangles,
-                VkGeometryDataNV(triangles,
-                    VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n, VkBuffer.Null, 0u, 0u, 0UL)
-                ),
+                VkGeometryDataNV(triangles, VkGeometryAABBNV.Empty),
                 VkGeometryFlagsNV.OpaqueBit
             )
 
         let createAABB (buffer : IBuffer<'a>) =
             VkGeometryNV(
-                VkStructureType.GeometryNv, 0n,
                 VkGeometryTypeNV.Aabbs,
                 VkGeometryDataNV(
-                    VkGeometryTrianglesNV(VkStructureType.GeometryTrianglesNv, 0n,
-                        VkBuffer.Null, 0UL, 0u, 0UL, VkFormat.Undefined,
-                        VkBuffer.Null, 0UL, 0u, VkIndexType.NoneNv,
-                        VkBuffer.Null, 0UL),
-                    VkGeometryAABBNV(VkStructureType.GeometryAabbNv, 0n,
-                        getBufferHandle buffer.Buffer, uint32 buffer.Count, uint32 sizeof<'a>, uint64 buffer.Offset)
+                    VkGeometryTrianglesNV.Empty,
+                    VkGeometryAABBNV(
+                        getBufferHandle buffer.Buffer, uint32 buffer.Count, uint32 sizeof<'a>, uint64 buffer.Offset
+                    )
                 ),
                 VkGeometryFlagsNV.OpaqueBit
             )
@@ -167,13 +163,8 @@ module AccelerationStructure =
     let private getMemoryRequirements (s : AccelerationStructure) =
         let get memoryType =
             native {
-                let! pInfo = 
-                    VkAccelerationStructureMemoryRequirementsInfoNV(
-                        VkStructureType.AccelerationStructureMemoryRequirementsInfoNv, 0n,
-                        memoryType, s.Handle
-                    )
-
-                let! pReqs = VkMemoryRequirements2()
+                let! pInfo = VkAccelerationStructureMemoryRequirementsInfoNV(memoryType, s.Handle)
+                let! pReqs = VkMemoryRequirements2.Empty
                 VkRaw.vkGetAccelerationStructureMemoryRequirementsNV(s.Device.Handle, pInfo, pReqs)
 
                 return pReqs.Value.memoryRequirements
@@ -196,7 +187,6 @@ module AccelerationStructure =
         native {
             let! pInfo =
                 VkBindAccelerationStructureMemoryInfoNV(
-                    VkStructureType.BindAccelerationStructureMemoryInfoNv, 0n,
                     s.Handle, s.Memory.Memory.Handle, uint64 s.Memory.Offset, 0u, NativePtr.zero
                 )
 
@@ -283,7 +273,6 @@ module AccelerationStructure =
                 native {
                     let! pBarrier =
                         VkMemoryBarrier(
-                            VkStructureType.MemoryBarrier, 0n,
                             VkAccessFlags.AccelerationStructureReadBitNv ||| VkAccessFlags.AccelerationStructureWriteBitNv,
                             VkAccessFlags.AccelerationStructureReadBitNv ||| VkAccessFlags.AccelerationStructureWriteBitNv
                         )
@@ -311,11 +300,7 @@ module AccelerationStructure =
 
     let private createHandle (device : Device) (info : AccelerationStructureInfo) =
         native {
-            let! pCreateInfo =
-                VkAccelerationStructureCreateInfoNV(
-                    VkStructureType.AccelerationStructureCreateInfoNv, 0n, 0UL, info.data
-                )
-
+            let! pCreateInfo = VkAccelerationStructureCreateInfoNV(0UL, info.data)
             let! pHandle = VkAccelerationStructureNV.Null
             VkRaw.vkCreateAccelerationStructureNV(device.Handle, pCreateInfo, NativePtr.zero, pHandle)
                 |> check "could not create acceleration structure"
