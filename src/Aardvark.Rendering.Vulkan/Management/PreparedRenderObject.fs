@@ -124,7 +124,7 @@ type DevicePreparedRenderObjectExtensions private() =
                                         None
 
                                     | descriptions ->
-                                        let viewSam =
+                                        let list =
                                             descriptions
                                             |> List.choosei (fun i (textureName, samplerState) ->
                                                 let textureName = Symbol.Create textureName
@@ -138,8 +138,8 @@ type DevicePreparedRenderObjectExtensions private() =
                                                     Log.warn "[Vulkan] could not find texture: %A" textureName
                                                     None
                                             )
-                                            |> AMap.ofList
 
+                                        let viewSam = this.CreateImageSamplerArray(list)
                                         AdaptiveDescriptor.AdaptiveCombinedImageSampler(i, viewSam) |> Some
                                 
 
@@ -303,7 +303,7 @@ type DevicePreparedRenderObjectExtensions private() =
                                         None
 
                                     | descriptions ->
-                                        let viewSam =
+                                        let list =
                                             descriptions
                                             |> List.choosei (fun i (textureName, samplerState) ->
                                                 let textureName = Symbol.Create textureName
@@ -317,8 +317,8 @@ type DevicePreparedRenderObjectExtensions private() =
                                                     Log.warn "[Vulkan] could not find texture: %A" textureName
                                                     None
                                             )
-                                            |> AMap.ofList
 
+                                        let viewSam = this.CreateImageSamplerArray(list)
                                         AdaptiveDescriptor.AdaptiveCombinedImageSampler(i, viewSam) |> Some
 
                             | ImageParameter img ->

@@ -610,19 +610,25 @@ type PixTexture3d(data : PixVolume, textureParams : TextureParams) =
 
 module DefaultTextures =
 
-    let checkerboardPix = 
+    let coloredCheckerboardPix color =
         let pi = PixImage<byte>(Col.Format.RGBA, V2i.II * 256)
         pi.GetMatrix<C4b>().SetByCoord(fun (c : V2l) ->
             let c = c / 16L
             if (c.X + c.Y) % 2L = 0L then
                 C4b.White
             else
-                C4b.Gray
+                color
         ) |> ignore
         pi
 
+    let checkerboardPix = 
+        coloredCheckerboardPix C4b.Gray
+
+    let coloredCheckerboard color =
+        PixTexture2d(PixImageMipMap [| coloredCheckerboardPix color :> PixImage |], true) :> ITexture |> Mod.constant
+
     let checkerboard = 
-        PixTexture2d(PixImageMipMap [| checkerboardPix :> PixImage |], true) :> ITexture |> Mod.constant
+        coloredCheckerboard C4b.Gray
 
     let blackPix = 
         let pi = PixImage<byte>(Col.Format.RGBA, V2i.II)

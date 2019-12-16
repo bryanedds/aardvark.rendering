@@ -157,7 +157,8 @@ let main argv =
             C4f.DarkRed; C4f.DarkGreen; C4f.DarkCyan; C4f.DarkMagenta; C4f.DarkYellow; C4f.DarkBlue
         |]
 
-        let diffuseTexture = DefaultTextures.checkerboard
+        let diffuseTextures =
+            colors |> Array.map (C4b >> DefaultTextures.coloredCheckerboard)
 
         fun dynamic cube ->
             let axis, turnRate, moveSpeed, initialTrafo =
@@ -187,6 +188,10 @@ let main argv =
             let color =
                 let i = rand.UniformInt(colors.Length)
                 ~~colors.[i]
+
+            let diffuseTexture =
+                let i = rand.UniformInt(diffuseTextures.Length)
+                diffuseTextures.[i]
 
             let attributes =
                 SymDict.ofList [

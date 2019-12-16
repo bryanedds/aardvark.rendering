@@ -4,6 +4,7 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Rendering.Vulkan.NVRayTracing
 
+open System
 open System.Collections.Generic
 
 type private InstanceWriter(input : TraceObject, compile : AdaptiveToken -> TraceObject -> VkGeometryInstance) =
@@ -29,8 +30,7 @@ type private InstanceWriter(input : TraceObject, compile : AdaptiveToken -> Trac
 
 /// Array that holds VkGeometryInstance structs that adaptively
 /// resizes and stays compact
-type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
-    inherit TraceSceneReader(indices.Scene)
+type InstanceArray() =
 
     // CPU buffer
     let mutable data : VkGeometryInstance[] = Array.empty
@@ -49,7 +49,7 @@ type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
         keys.[index] <- key
         mapping.[key] <- index
 
-    let compileObject (token : AdaptiveToken) (obj : TraceObject) =
+    let compileObject (indices : IndexPool) (shaders : ShaderPool) (token : AdaptiveToken) (obj : TraceObject) =
         let trafo = obj.Transform.GetValue token
         let index = indices.Get obj
         let hitGroup = shaders.GetHitGroupIndex obj
@@ -60,7 +60,8 @@ type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
             unbox obj.Geometry.Handle
         )
 
-    let applyDeltas (token : AdaptiveToken) (added : TraceObject seq) (removed : TraceObject seq) =
+    let applyDeltas (token : AdaptiveToken) (indices : IndexPool) (shaders : ShaderPool)
+                    (added : TraceObject seq) (removed : TraceObject seq) =
         let free = Queue(removed |> Seq.map (fun k -> mapping.[k]))
         let delta = Seq.length added - Seq.length removed
 
@@ -100,7 +101,7 @@ type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
         for k in added do
             let i = free.Dequeue()
 
-            let w = InstanceWriter(k, compileObject)
+            let w = InstanceWriter(k, compileObject indices shaders)
             w.Write(token, data, i)
             writers.[k] <- w
 
@@ -109,26 +110,36 @@ type InstanceArray(indices : IndexPool, shaders : ShaderPool) =
         assert(free.IsEmpty())
 
     // Applies all the pending adds and removes, and compacts the buffer
-    override x.ApplyChanges(token, added, removed) =
-        indices.Update token
-        shaders.Update token
-
+    member x.ApplyChanges(token, indices, shaders, added, removed) =
         // Update trafos of existing objects
         for KeyValue(obj, w) in writers do
             w.WriteTrafo(token, data, mapping.[obj])
 
         // Handle added and removed objects
         if Seq.length added + Seq.length removed > 0 then
-            applyDeltas token added removed
+            applyDeltas token indices shaders added removed
+
+    member x.Dispose() =
+        for w in writers.Values do
+            w.Release()
+
+        writers.Clear()  
 
     member x.Data =
         data
 
+    interface IDisposable with
+        member x.Dispose() = x.Dispose()
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module InstanceArray =
 
-    let create (indices : IndexPool) (shaders : ShaderPool) =
-        new InstanceArray(indices, shaders)
+    let create() =
+        new InstanceArray()
 
     let delete (array : InstanceArray) =
         array.Dispose()
+
+    let applyChanges (token :AdaptiveToken) (indices : IndexPool) (shaders : ShaderPool)
+                        (added : TraceObject seq) (removed : TraceObject seq) (array : InstanceArray) =
+        array.ApplyChanges(token, indices, shaders, added, removed) 

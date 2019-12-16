@@ -37,7 +37,6 @@ module private ShaderPoolHelpers =
         new ShaderModule(device, handle, stage, Map.empty, code)
 
 type ShaderPool(device : Device, scene : TraceScene) =
-    inherit TraceSceneReader(scene)
 
     // Dict mapping source to compiled modules
     // Duplicate sources are removed
@@ -123,7 +122,7 @@ type ShaderPool(device : Device, scene : TraceScene) =
 
         description
 
-    override x.ApplyChanges(_ : AdaptiveToken, added : TraceObject seq, removed : TraceObject seq) : unit =
+    member x.ApplyChanges(added : TraceObject seq, removed : TraceObject seq) : unit =
         let modified =
             state {
                 for obj in added do
@@ -150,7 +149,7 @@ type ShaderPool(device : Device, scene : TraceScene) =
         ) 
 
     interface IDisposable with
-        member x.Dispose() = x.Dispose(); base.Dispose()
+        member x.Dispose() = x.Dispose()
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module ShaderPool =
@@ -160,3 +159,6 @@ module ShaderPool =
 
     let destroy (pool : ShaderPool) =
         pool.Dispose()
+
+    let applyChanges (added : TraceObject seq) (removed : TraceObject seq) (pool : ShaderPool) =
+        pool.ApplyChanges(added, removed) 

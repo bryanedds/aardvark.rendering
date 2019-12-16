@@ -3,6 +3,7 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Rendering.Vulkan
+open Aardvark.Rendering.Vulkan.Raytracing
 open Aardvark.Rendering.Vulkan.NVRayTracing
 
 open System
@@ -156,7 +157,7 @@ type PreparedTraceScene =
     {
         device              : Device
         original            : TraceScene
-        manager             : TraceResourceManager
+        manager             : ShaderResourceManager
 
         pipeline            : IResourceLocation<TracePipeline>
         pipelineLayout      : PipelineLayout
@@ -179,11 +180,11 @@ type DevicePreparedRenderObjectExtensions private() =
 
     static let prepareTraceScene (this : ResourceManager) (scene : TraceScene) =
 
-        let indexPool = IndexPool.create scene
-        let shaderPool = ShaderPool.create this.Device scene
+        let indexPool = this.CreateIndexPool(scene)
+        let shaderPool = this.CreateShaderPool(this.Device, scene)
 
         // Top-level acceleration structure
-        let instanceBuffer = this.CreateInstanceBuffer(indexPool, shaderPool)
+        let instanceBuffer = this.CreateInstanceBuffer(scene, indexPool, shaderPool)
         let tlAS = this.CreateAccelerationStructure(instanceBuffer)
 
         // Compute the combined bindings of all shaders
@@ -199,10 +200,8 @@ type DevicePreparedRenderObjectExtensions private() =
 
         let shaderParams = TraceSceneShaderParams.create sceneBindings
 
-        // Trace resource manager
-        let manager = new TraceResourceManager(this, scene, shaderParams, indexPool)
-        manager.Add(indexPool)
-        manager.Add(shaderPool)
+        // Shader resource manager
+        let manager = new ShaderResourceManager(this, scene, shaderParams, indexPool)
 
         // Descriptor sets
         let descriptorSetLayout = createDescriptorSetLayout this.Device manager.ShaderParams

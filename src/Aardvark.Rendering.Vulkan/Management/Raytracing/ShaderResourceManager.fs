@@ -4,12 +4,13 @@ open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.Rendering.Vulkan
+open Aardvark.Rendering.Vulkan.Raytracing
 
 open System
 open System.Collections.Generic
 
-type TraceResourceManager(manager : ResourceManager, scene : TraceScene,
-                            shaderParams : TraceSceneShaderParams, indices : IndexPool) =
+type ShaderResourceManager(manager : ResourceManager, scene : TraceScene,
+                            shaderParams : TraceSceneShaderParams, indexPool : IResourceLocation<IndexPool>) =
     inherit AdaptiveObject()
     
     // Resources that need to be acquired and updated
@@ -43,19 +44,13 @@ type TraceResourceManager(manager : ResourceManager, scene : TraceScene,
     // Storage buffers are either global, or attribute buffers that obtain their data from
     // the objects in the scene
     let storageBuffers =
-        let createAttributeBuffer (name : Symbol) =
-            let b = new AttributeArray(name, indices)
-            disposables.Add(b)
-            b.Data :> IMod
-
-        shaderParams.storageBuffers |> choose (fun name layout ->
+        shaderParams.storageBuffers |> choose (fun name _ ->
             let buffer =
-                scene.Buffers
-                |> SymDict.tryFind name
-                |> Option.map unbox
-                |> Option.defaultWith (fun _ -> createAttributeBuffer name)
+                match scene.Buffers |> SymDict.tryFind name with
+                | Some b -> manager.CreateStorageBuffer b
+                | None -> manager.CreateAttributeBuffer(name, scene, indexPool)
 
-            Some (name, manager.CreateStorageBuffer(buffer))
+            Some (name, buffer)
         )
 
     let uniformBuffers =
@@ -67,23 +62,24 @@ type TraceResourceManager(manager : ResourceManager, scene : TraceScene,
 
     let samplers =
         let createGlobalSamplerArray samplerType textures =
-            textures
-            |> List.choosei (fun i (t, d) ->
-                match t with
-                | Some t ->
-                    Some (i,  manager.CreateImageSampler(samplerType, t, d))
-                | _ ->
-                    None
-            ) |> AMap.ofList
+            let map =
+                textures
+                |> List.choosei (fun i (t, d) ->
+                    match t with
+                    | Some t ->
+                        Some (i,  manager.CreateImageSampler(samplerType, t, d))
+                    | _ ->
+                        None
+                ) |> AMap.ofList
+
+            manager.CreateImageSamplerArray(map)
 
         let createObjectSamplerArray name samplerType samplerState =
             // TODO: Compute the maximum number of descriptors possible accoring to the
             // device limits: https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPipelineLayoutCreateInfo.html
             // Or let the user specify the max?
             shaderParams <- shaderParams |> TraceSceneShaderParams.setSamplerCount name 4096
-            let array = new ImageSamplerArray(manager, name, indices, samplerType, samplerState)
-            disposables.Add array
-            array.Data
+            manager.CreateImageSamplerArray(name, scene, samplerType, samplerState, indexPool)
 
         shaderParams.samplers |> choose (fun name sampler ->
             match sampler.samplerTextures with
@@ -104,14 +100,14 @@ type TraceResourceManager(manager : ResourceManager, scene : TraceScene,
                 // be a per object texture array
                 let hasTexture = fst >> Option.isSome
 
-                let map =
+                let array =
                     if resolved |> List.exists hasTexture then   
                         resolved |> createGlobalSamplerArray sampler.samplerType
                     else
                         let samplerState = resolved |> List.head |> snd
                         createObjectSamplerArray name sampler.samplerType samplerState
 
-                Some (name, map)
+                Some (name, array)
         )
 
     member x.Update(token : AdaptiveToken) =

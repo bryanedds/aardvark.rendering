@@ -3,6 +3,7 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
+open System
 open System.Collections.Generic
 open System.Runtime.InteropServices
 
@@ -36,8 +37,7 @@ type private AttributeWriter(input : IMod, index : int) =
     member x.Size =
         size
 
-type AttributeArray(name : Symbol, indices : IndexPool) =
-    inherit TraceSceneReader(indices.Scene)
+type AttributeArray(name : Symbol) =
 
     // CPU buffer
     let mutable data : byte[] = Array.empty
@@ -56,9 +56,8 @@ type AttributeArray(name : Symbol, indices : IndexPool) =
         | _ ->
             attributeSize <- Some size
 
-    override x.ApplyChanges(token, added, removed) =
-        indices.Update token
-
+    member x.ApplyChanges(token : AdaptiveToken, indices : IndexPool,
+                            added : TraceObject seq, removed : TraceObject seq) =
         // Create writers for new objects
         for obj in added do
             match obj.Attributes.TryGetValue name with
@@ -87,8 +86,27 @@ type AttributeArray(name : Symbol, indices : IndexPool) =
         for w in writers.Values do
             w.Write(token, data)
 
+    member x.Dispose() =
+        for w in writers.Values do
+            w.Release()
+
+        writers.Clear()
+
     member x.Data =
-        Mod.custom (fun token ->
-            x.Update token
-            VolatileArrayBuffer(data)
-        )
+        data
+
+    interface IDisposable with
+        member x.Dispose() = x.Dispose()
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module AttributeArray =
+
+    let create (name : Symbol) =
+        new AttributeArray(name)
+
+    let delete (array : AttributeArray) =
+        array.Dispose()
+
+    let applyChanges (token :AdaptiveToken) (indices : IndexPool)
+                        (added : TraceObject seq) (removed : TraceObject seq) (array : AttributeArray) =
+        array.ApplyChanges(token, indices, added, removed) 

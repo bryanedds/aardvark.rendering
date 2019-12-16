@@ -1,11 +1,9 @@
 ﻿namespace Aardvark.Rendering.Vulkan.Raytracing
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
 open System.Collections.Generic
 
-type IndexPool(scene : TraceScene) =
-    inherit TraceSceneReader(scene)
+type IndexPool() =
 
     // Next highest index
     let mutable nextIndex = 0
@@ -17,7 +15,7 @@ type IndexPool(scene : TraceScene) =
     let indices = Dictionary<TraceObject, int>()
 
     // Removes objects and assigns indices to newly added ones
-    override x.ApplyChanges(_ : AdaptiveToken, added : TraceObject seq, removed : TraceObject seq) : unit =
+    member x.ApplyChanges(added : TraceObject seq, removed : TraceObject seq) =
 
         for k in removed do
             match indices.TryGetValue k with
@@ -51,8 +49,8 @@ type IndexPool(scene : TraceScene) =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module IndexPool =
 
-    let create (scene : TraceScene) =
-        new IndexPool(scene)
+    let create () =
+        new IndexPool()
 
-    let destroy (pool : IndexPool) =
-        pool.Dispose()
+    let applyChanges (added : TraceObject seq) (removed : TraceObject seq) (pool : IndexPool) =
+        pool.ApplyChanges(added, removed) 

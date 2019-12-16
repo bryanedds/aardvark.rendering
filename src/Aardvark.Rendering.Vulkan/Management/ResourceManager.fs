@@ -8,7 +8,6 @@ open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.Rendering.Vulkan.Raytracing
-open Aardvark.Rendering.Vulkan.NVRayTracing
 open Microsoft.FSharp.NativeInterop
 
 #nowarn "9"
@@ -434,9 +433,14 @@ open Aardvark.Rendering.Vulkan
 
 module Resources =
 
+    // Combined image and sampler
+    type ImageSampler = ImageView * Sampler
+
+    type ImageSamplerArray = array<int * IResourceLocation<ImageSampler>>
+
     type AdaptiveDescriptor =
         | AdaptiveUniformBuffer of int * IResourceLocation<UniformBuffer>
-        | AdaptiveCombinedImageSampler of int * amap<int, IResourceLocation<ImageView * Sampler>>
+        | AdaptiveCombinedImageSampler of int * IResourceLocation<ImageSamplerArray>
         | AdaptiveStorageBuffer of int * IResourceLocation<Buffer>
         | AdaptiveStorageImage of int * IResourceLocation<ImageView>
         | AdaptiveAccelerationStructure of int * IResourceLocation<AccelerationStructure>
@@ -525,7 +529,7 @@ module Resources =
     type ImageSamplerResource(owner : IResourceCache, key : list<obj>, device : Device,
                               samplerType : FShade.GLSL.GLSLSamplerType, texture : IMod<ITexture>,
                               sampler : IMod<SamplerStateDescription>) =
-        inherit AbstractResourceLocation<ImageView * Sampler>(owner, key)
+        inherit AbstractResourceLocation<ImageSampler>(owner, key)
 
         let mutable handle : Option<(ITexture * SamplerStateDescription) * (Image * ImageView * Sampler)> = None
 
@@ -779,6 +783,57 @@ module Resources =
             let calls = calls.GetValue token
             DrawCall.Direct(indexed, List.toArray calls)
 
+    type ImageSamplerArrayResource(owner : IResourceCache, key : list<obj>, input : amap<int, _>) =
+        inherit AbstractResourceLocation<ImageSamplerArray>(owner, key)
+
+        let mutable reader = None
+
+        let mutable handle : ImageSamplerArray = [||]
+        let mutable version = 0
+
+        // Sparsely maps resources to a binding slot
+        let slots = Dictionary<int, IResourceLocation<_>>()
+
+        // Remove a resource from the given dictionary if it exists
+        let remove (i : int) =
+            match slots.TryGetValue i with
+            | true, x ->
+                slots.Remove i |> ignore
+                x.Release()
+            | _ -> ()
+
+        // Add a resource to the given dictionary
+        let set (i : int) (r : IResourceLocation<_>) =
+            r.Acquire()
+            remove i
+            slots.[i] <- r
+
+        override x.Create() =
+            reader <- Some <| input.GetReader()
+
+        override x.Destroy() =
+            for (_, r) in handle do
+                r.Release()
+
+            reader |> Option.iter (fun r -> r.Dispose())
+
+        override x.GetHandle(token : AdaptiveToken) =
+            if x.OutOfDate then
+
+                reader |> Option.iter (fun r ->
+                    let deltas = r.GetOperations token
+
+                    for (i, op) in deltas do
+                        match op with
+                        | Set r -> set i r
+                        | Remove -> remove i
+
+                    if not deltas.IsEmpty then
+                        handle <- Dictionary.toArray slots
+                        inc &version
+                )
+
+            { handle = handle; version = version }
 
     type DescriptorSetResource(owner : IResourceCache, key : list<obj>, layout : DescriptorSetLayout, bindings : AdaptiveDescriptor[]) =
         inherit AbstractResourceLocation<DescriptorSet>(owner, key)
@@ -789,63 +844,37 @@ module Resources =
         let mutable state = [||]
         let device = layout.Device
 
-        // For each binding we store a reader along side a dictionary that sparsely maps resources
-        // to a slot within that binding
-        let imageSamplers = Dictionary<int, _ * Dictionary<int, IResourceLocation<'a>>>()
-
-        // Remove a resource from the given dictionary if it exists
-        let remove (i : int) (slots : Dictionary<int, IResourceLocation<'a>>) =
-            match slots.TryGetValue i with
-            | true, x ->
-                slots.Remove i |> ignore
-                x.Release()
-            | _ -> ()
-
-        // Add a resource to the given dictionary
-        let set (i : int) (r : IResourceLocation<'a>) (slots : Dictionary<int, IResourceLocation<'a>>) =
-            r.Acquire()
-            slots |> remove i
-            slots.[i] <- r
-
         override x.Create() =
             for b in bindings do
                 match b with
-                    | AdaptiveCombinedImageSampler(binding, map) ->
-                        imageSamplers.[binding] <- (map.GetReader(), Dictionary())
+                | AdaptiveCombinedImageSampler(_,s) ->
+                    s.Acquire()
 
-                    | AdaptiveStorageBuffer(_,b) ->
-                        b.Acquire()
+                | AdaptiveStorageBuffer(_,b) ->
+                    b.Acquire()
 
-                    | AdaptiveStorageImage(_,v) ->
-                        v.Acquire()
+                | AdaptiveStorageImage(_,v) ->
+                    v.Acquire()
 
-                    | AdaptiveUniformBuffer(_,b) ->
-                        b.Acquire()
+                | AdaptiveUniformBuffer(_,b) ->
+                    b.Acquire()
                     
-                    | AdaptiveAccelerationStructure (_,a) ->
-                        a.Acquire()
-
-            ()
+                | AdaptiveAccelerationStructure (_,a) ->
+                    a.Acquire()
 
         override x.Destroy() =
-            for (reader, slots) in imageSamplers.Values do
-                reader.Dispose()
-
-                for r in slots.Values do
-                    r.Release()
-
             for b in bindings do
                 match b with
-                    | AdaptiveCombinedImageSampler _ ->
-                        ()
-                    | AdaptiveStorageImage(_,v) ->
-                        v.Release()
-                    | AdaptiveStorageBuffer(_,b) ->
-                        b.Release()
-                    | AdaptiveUniformBuffer(_,b) ->
-                        b.Release()
-                    | AdaptiveAccelerationStructure(_,a) ->
-                        a.Release()
+                | AdaptiveCombinedImageSampler(_,s) ->
+                    s.Release()
+                | AdaptiveStorageImage(_,v) ->
+                    v.Release()
+                | AdaptiveStorageBuffer(_,b) ->
+                    b.Release()
+                | AdaptiveUniformBuffer(_,b) ->
+                    b.Release()
+                | AdaptiveAccelerationStructure(_,a) ->
+                    a.Release()
 
             match handle with
                 | Some set -> 
@@ -855,52 +884,40 @@ module Resources =
 
         override x.GetHandle(token : AdaptiveToken) =
             if x.OutOfDate then
-
-                for (reader, slots) in imageSamplers.Values do
-                    let deltas = reader.GetOperations token
-
-                    for (i, op) in deltas do
-                        match op with
-                        | Set r -> slots |> set i r
-                        | Remove -> slots |> remove i
                 
                 let bindings =
                     bindings |> Array.map (fun b ->
                         match b with
-                            | AdaptiveUniformBuffer(slot, b) ->
-                                let handle =
-                                    match b with
-                                        | :? UniformBufferResource as b -> b.Handle
-                                        | b -> b.Update(AdaptiveToken.Top).handle
+                        | AdaptiveUniformBuffer(slot, b) ->
+                            let handle =
+                                match b with
+                                    | :? UniformBufferResource as b -> b.Handle
+                                    | b -> b.Update(AdaptiveToken.Top).handle
 
-                                UniformBuffer(slot,  handle)
+                            UniformBuffer(slot,  handle)
                                 
-                            | AdaptiveStorageImage(slot,v) ->
-                                let image = v.Update(token).handle
-                                StorageImage(slot, image)
+                        | AdaptiveStorageImage(slot,v) ->
+                            let image = v.Update(token).handle
+                            StorageImage(slot, image)
 
-                            | AdaptiveStorageBuffer(slot, b) ->
-                                let buffer = b.Update(token).handle
-                                StorageBuffer(slot, buffer, 0L, buffer.Size)
+                        | AdaptiveStorageBuffer(slot, b) ->
+                            let buffer = b.Update(token).handle
+                            StorageBuffer(slot, buffer, 0L, buffer.Size)
 
-                            | AdaptiveCombinedImageSampler(slot, _) ->
-                                let (_, slots) = imageSamplers.[slot]
+                        | AdaptiveCombinedImageSampler(slot, s) ->
+                            let arr =
+                                s.Update(token).handle
+                                |> Array.map (fun (i, r) ->
+                                    let (v, s) = r.Update(token).handle
+                                    i, VkImageLayout.ShaderReadOnlyOptimal, v, s
+                                )
 
-                                let arr =
-                                    slots
-                                    |> Dictionary.toArray
-                                    |> Array.map (fun (i, r) ->
-                                        let (v, s) = r.Update(token).handle
-                                        i, VkImageLayout.ShaderReadOnlyOptimal, v, s
-                                    )
-
-                                CombinedImageSampler(slot, arr)
+                            CombinedImageSampler(slot, arr)
                                 
-                            | AdaptiveAccelerationStructure(slot, a) ->
-                                let tlas = a.Update(token).handle
-                                AccelerationStructure(slot, unbox tlas)
+                        | AdaptiveAccelerationStructure(slot, a) ->
+                            let tlas = a.Update(token).handle
+                            AccelerationStructure(slot, unbox tlas)
                     )
-
 
                 let handle =
                     match handle with
@@ -1263,166 +1280,6 @@ module Resources =
         override x.Compute (token : AdaptiveToken) =
             if input.GetValue token then 1 else 0
 
-    type InstanceBufferResource(owner : IResourceCache, key : list<obj>, device : Device,
-                                indexPool : IndexPool, shaderPool : ShaderPool) =
-        inherit AbstractResourceLocation<InstanceBuffer>(owner, key)
-
-        let mutable handle = None
-        let mutable version = 0
-
-        let array = InstanceArray.create indexPool shaderPool
-
-        let create instances =
-            handle <- Some (InstanceBuffer.create device instances)
-            inc &version
-
-        let update instances buffer =
-            let success = InstanceBuffer.tryUpdate instances buffer
-
-            if not success then
-                InstanceBuffer.delete buffer
-                create instances
-            else
-                inc &version
-
-        override x.Create() =
-            ()
-
-        override x.Destroy() =
-            handle |> Option.iter InstanceBuffer.delete
-            InstanceArray.delete array
-
-        override x.GetHandle(token : AdaptiveToken) =
-            if x.OutOfDate then
-                array.Update token
-
-                match handle with
-                    | Some s -> update array.Data s
-                    | None -> create array.Data
-
-            { handle = handle.Value; version = version }
-
-    type AccelerationStructureResource(owner : IResourceCache, key : list<obj>, 
-                                       device : Device, resources : IResourceLocation list,
-                                       getDescription : AdaptiveToken -> AccelerationStructureDescription) =
-        inherit AbstractResourceLocation<AccelerationStructure>(owner, key)
-
-        let mutable handle = None
-        let mutable version = 0
-
-        let create desc =
-            handle <- Some (AccelerationStructure.create device desc)
-            inc &version
-
-        let update desc s =
-            let success = AccelerationStructure.tryUpdate desc s
-
-            if not success then
-                AccelerationStructure.delete s
-                create desc
-            else
-                inc &version
-
-        override x.Create() =
-            resources |> List.iter (fun r -> r.Acquire())
-
-        override x.Destroy() =
-            handle |> Option.iter AccelerationStructure.delete
-            resources |> List.iter (fun r -> r.Release())
-
-        override x.GetHandle(token : AdaptiveToken) =
-            if x.OutOfDate then
-                let desc = getDescription token
-
-                match handle with
-                    | Some s -> update desc s
-                    | None -> create desc
-
-            { handle = handle.Value; version = version }
-
-    type TracePipelineResource(owner : IResourceCache, key : list<obj>,
-                                device : Device, layout : PipelineLayout, maxRecursionDepth : uint32,
-                                shaderPool : ShaderPool) =
-        inherit AbstractResourceLocation<TracePipeline>(owner, key)
-
-        let mutable handle = None
-        let mutable version = 0
-        let mutable description = None
-
-        let baseDescription = TracePipelineDescription.create layout maxRecursionDepth
-
-        let destroy() =
-            handle |> Option.iter TracePipeline.delete
-            handle <- None
-
-        let create desc =
-            let basePipeline = handle
-            handle <- Some (TracePipeline.create device basePipeline desc)
-            description <- Some desc
-            basePipeline |> Option.iter TracePipeline.delete
-            inc &version
-
-        override x.Create() =
-            ()
-
-        override x.Destroy() =
-            destroy()
-
-        override x.GetHandle(token : AdaptiveToken) =
-            if x.OutOfDate then
-                shaderPool.Update token
-                let desc = shaderPool.GetPipelineDescription baseDescription
-
-                match handle with
-                | Some _ when description |> Option.contains desc -> ()
-                | _ -> create desc
-
-            { handle = handle.Value; version = version }
-
-    type ShaderBindingTableResource(owner : IResourceCache, key : list<obj>,
-                                        device : Device, pipeline : IResourceLocation<TracePipeline>) =
-        inherit AbstractResourceLocation<ShaderBindingTable>(owner, key)
-
-        let mutable handle = None
-        let mutable version = 0
-        let mutable pipelineVersion = -1
-
-        let create pipeline entries =
-            handle <- Some (ShaderBindingTable.create device pipeline entries)
-            inc &version
-
-        let update pipeline entries table =
-            let success = table |> ShaderBindingTable.tryUpdate pipeline entries
-
-            if not success then
-                ShaderBindingTable.delete table
-                create pipeline entries
-            else
-                inc &version
-
-        override x.Create() =
-            pipeline.Acquire()
-
-        override x.Destroy() =
-            handle |> Option.iter ShaderBindingTable.delete
-            pipeline.Release()
-
-        override x.GetHandle(token : AdaptiveToken) =
-            if x.OutOfDate then
-                let info = pipeline.Update token
-
-                if info.version <> pipelineVersion then
-                    let pipeline = info.handle
-                    let entries = TracePipeline.getShaderBindingTableEntries pipeline
-
-                    match handle with
-                    | Some tbl -> tbl |> update pipeline.Handle entries
-                    | None -> create pipeline.Handle entries
-
-                    pipelineVersion <- info.version
-
-            { handle = handle.Value; version = version }
-
 open Resources
 type ResourceManager(user : IResourceUser, device : Device) =
     //let descriptorPool = device.CreateDescriptorPool(1 <<< 22, 1 <<< 22)
@@ -1435,7 +1292,8 @@ type ResourceManager(user : IResourceUser, device : Device) =
     let imageCache              = ResourceLocationCache<Image>(user)
     let imageViewCache          = ResourceLocationCache<ImageView>(user)
     let samplerCache            = ResourceLocationCache<Sampler>(user)
-    let imageSamplerCache       = ResourceLocationCache<ImageView * Sampler>(user)
+    let imageSamplerCache       = ResourceLocationCache<ImageSampler>(user)
+    let imageSamplerArrayCache  = ResourceLocationCache<ImageSamplerArray>(user)
     let programCache            = ResourceLocationCache<ShaderProgram>(user)
     let simpleSurfaceCache      = System.Collections.Concurrent.ConcurrentDictionary<obj, ShaderProgram>()
     let fshadeThingCache        = System.Collections.Concurrent.ConcurrentDictionary<obj, PipelineLayout * IMod<FShade.Imperative.Module>>()
@@ -1452,12 +1310,6 @@ type ResourceManager(user : IResourceUser, device : Device) =
     let descriptorBindingCache  = NativeResourceLocationCache<DescriptorSetBinding>(user)
     let indexBindingCache       = NativeResourceLocationCache<IndexBufferBinding>(user)
     let isActiveCache           = NativeResourceLocationCache<int>(user)
-
-    let instanceBufferCache         = ResourceLocationCache<InstanceBuffer>(user)
-    let accelerationStructureCache  = ResourceLocationCache<AccelerationStructure>(user)
-    let shaderPoolCache             = ResourceLocationCache<ShaderPool>(user)
-    let tracePipelineCache          = ResourceLocationCache<TracePipeline>(user)
-    let shaderBindingTableCache     = ResourceLocationCache<ShaderBindingTable>(user)
     
     static let toInputTopology =
         LookupTable.lookupTable [
@@ -1499,13 +1351,6 @@ type ResourceManager(user : IResourceUser, device : Device) =
         indexBindingCache.Clear()
         isActiveCache.Clear()
 
-        instanceBufferCache.Clear()
-        accelerationStructureCache.Clear()
-        shaderPoolCache.Clear()
-        tracePipelineCache.Clear()
-        shaderBindingTableCache.Clear()
-
-
     member x.Device = device
 
 //    member x.CreateRenderPass(signature : Map<Symbol, AttachmentSignature>) =
@@ -1537,6 +1382,16 @@ type ResourceManager(user : IResourceUser, device : Device) =
         imageSamplerCache.GetOrCreate(
             [samplerType :> obj; texture :> obj; samplerDesc :> obj],
             fun cache key -> new ImageSamplerResource(cache, key, device, samplerType, texture, samplerDesc)
+        )
+
+    member x.CreateImageSamplerArray(input : seq<int * IResourceLocation<ImageSampler>>) =
+        imageSamplerArrayCache.GetOrCreate(
+            [input :> obj], fun cache key -> new ImageSamplerArrayResource(cache, key, AMap.ofSeq input)
+        )
+
+    member x.CreateImageSamplerArray(input : amap<int, IResourceLocation<ImageSampler>>) =
+        imageSamplerArrayCache.GetOrCreate(
+            [input :> obj], fun cache key -> new ImageSamplerArrayResource(cache, key, input)
         )
         
     member x.CreateShaderProgram(data : ISurface) =
@@ -1807,64 +1662,6 @@ type ResourceManager(user : IResourceUser, device : Device) =
 
     member x.CreateIsActive(value : IMod<bool>) =
         isActiveCache.GetOrCreate([value :> obj], fun cache key -> IsActiveResource(cache, key, value))
-
-    member x.CreateInstanceBuffer(indexPool : IndexPool, shaderPool : ShaderPool) =
-        let key = [ indexPool :> obj; shaderPool :> obj ]
-        instanceBufferCache.GetOrCreate(
-            key,
-            fun cache key ->
-                new InstanceBufferResource(cache, key, device, indexPool, shaderPool)
-        )
-
-    member x.CreateAccelerationStructure(instanceBuffer : IResourceLocation<InstanceBuffer>) =
-        let getDescription (token : AdaptiveToken) =
-            let buffer = (instanceBuffer.Update token).handle
-
-            { instances = buffer.Handle
-              instanceCount = buffer.Count }
-                |> TopLevel
-
-        let key = [ instanceBuffer :> obj ]
-        accelerationStructureCache.GetOrCreate(
-            key,
-            fun cache key ->
-                new AccelerationStructureResource(
-                    cache, key, device, [instanceBuffer :> IResourceLocation], getDescription
-                )
-        )
-
-    member x.CreateAccelerationStructure(desc : IMod<AccelerationStructureDescription>) =
-        let getDescription (token : AdaptiveToken) =
-            desc.GetValue token
-
-        let key = [ desc :> obj ]
-        accelerationStructureCache.GetOrCreate(
-            key,
-            fun cache key ->
-                new AccelerationStructureResource(
-                    cache, key, device, [], getDescription
-                )
-        )
-
-    member x.CreateTracePipeline(layout : PipelineLayout, maxRecursionDepth : uint32, shaderPool : ShaderPool) =
-        let key = [ layout :> obj; maxRecursionDepth :> obj; shaderPool :> obj ]
-        tracePipelineCache.GetOrCreate(
-            key,
-            fun cache key ->
-                new TracePipelineResource(
-                    cache, key, device, layout, maxRecursionDepth, shaderPool
-                )
-        )
-
-    member x.CreateShaderBindingTable(pipeline : IResourceLocation<TracePipeline>) =
-        let key = [ pipeline :> obj ]
-        shaderBindingTableCache.GetOrCreate(
-            key,
-            fun cache key ->
-                new ShaderBindingTableResource(
-                    cache, key, device, pipeline
-                )
-        )
 
     interface IDisposable with
         member x.Dispose() = x.Dispose()
