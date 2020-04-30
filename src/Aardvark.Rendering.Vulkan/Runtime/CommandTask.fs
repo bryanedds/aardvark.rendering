@@ -704,8 +704,14 @@ module private RuntimeCommands =
         let mutable next : Option<PreparedCommand> = None
 
         let mutable isDisposed = false
+        let mutable st : StackTrace = null
 
-        let check () = if isDisposed then failf "using disposed command"
+        let check () = 
+            if isDisposed then 
+                let a = st
+                Log.warn "%A" st
+                System.Diagnostics.Debugger.Break()
+                failf "using disposed command "
 
         member x.Prev
             with get() = check(); prev
@@ -748,6 +754,7 @@ module private RuntimeCommands =
         member x.Dispose() =
             check()
             isDisposed <- true
+            //st <- System.Diagnostics.StackTrace()
             x.Free()
             stream.Dispose()
             prev <- None
@@ -896,6 +903,7 @@ module private RuntimeCommands =
             }
         
         let trie = Trie<PreparedCommand>()
+        //let trie = Aardvark.Base.Trie<PreparedCommand>()
         do trie.Add([], firstCommand)
 
         override x.First = trie.First.Value
@@ -903,7 +911,7 @@ module private RuntimeCommands =
 
         override x.Add(cmd : PreparedCommand) =
             trie.Add(cmd.GroupKey, cmd)
-            match trie.Last with
+            match trie.Values |> Seq.tryLast with
                 | Some last -> 
                     let next = x.Next |> Option.map (fun n -> n.First)
                     last.Next <- next
@@ -916,7 +924,7 @@ module private RuntimeCommands =
 
         override x.Remove(cmd : PreparedCommand) =
             let res = trie.Remove(cmd.GroupKey)
-            match trie.Last with
+            match trie.Values |> Seq.tryLast with
                 | Some last -> 
                     let next = x.Next  |> Option.map (fun n -> n.First)
                     last.Next <- next
@@ -930,6 +938,64 @@ module private RuntimeCommands =
         override x.Release() =
             firstCommand.Dispose()
             trie.Clear()
+
+        override x.PerformUpdate token = 
+            
+            ()
+
+    and StupidCommandBucket() =
+        inherit CommandBucket()
+
+        let firstCommand =
+            { new PreparedCommand() with
+                override x.Free() = ()
+                override x.Compile(_,_) = ()
+            }
+
+        let lastCommand =
+            { new PreparedCommand() with
+                override x.Free() = ()
+                override x.Compile(_,_) = ()
+            }
+       
+
+        do firstCommand.Next <- Some lastCommand
+           lastCommand.Prev <- Some firstCommand
+
+        override x.First = firstCommand
+        override x.Last = lastCommand
+
+
+        override x.Add(cmd : PreparedCommand) =
+            let on = firstCommand.Next.Value
+            firstCommand.Next <- Some cmd
+            cmd.Next <- Some on
+            cmd.Prev <- Some firstCommand
+
+            //let next = x.Next |> Option.map (fun n -> n.First)
+            //last.Value.Next <- next
+            //match next with
+            //    | Some n -> n.Prev <- Some last.Value
+            //    | None -> ()
+
+
+
+        override x.Remove(cmd : PreparedCommand) =
+            let mutable c = firstCommand
+            let mutable found = false
+            while not found && c <> lastCommand do
+                if c = cmd then 
+                    match c.Prev with
+                    | None -> ()
+                    | Some p -> p.Next <- c.Next
+                    found <- true
+                else
+                    c <- c.Next.Value
+            found
+
+        override x.Release() =
+            firstCommand.Dispose()
+            () // TODO
 
         override x.PerformUpdate token = 
             
@@ -1057,10 +1123,12 @@ module private RuntimeCommands =
                         let bucket = 
                             match pass.Order with
                                 | RenderPassOrder.Arbitrary -> 
-                                    new UnorderedCommandBucket() :> CommandBucket
+                                    new StupidCommandBucket() :> CommandBucket
+                                    //new UnorderedCommandBucket() :> CommandBucket
                                 | o -> 
                                     Log.warn "[Vulkan] renderpass order %A not implemented" o
-                                    new UnorderedCommandBucket() :> CommandBucket
+                                    new StupidCommandBucket() :> CommandBucket
+                                    //new UnorderedCommandBucket() :> CommandBucket
 
                         let prev = l |> Option.map snd
                         let next = r |> Option.map snd
