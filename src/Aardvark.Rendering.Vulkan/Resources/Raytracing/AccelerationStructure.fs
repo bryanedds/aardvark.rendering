@@ -160,28 +160,23 @@ module private AccelerationStructureInfo =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AccelerationStructure =
 
-    let private getMemoryRequirements (s : AccelerationStructure) =
-        let get memoryType =
-            native {
-                let! pInfo = VkAccelerationStructureMemoryRequirementsInfoNV(memoryType, s.Handle)
-                let! pReqs = VkMemoryRequirements2.Empty
-                VkRaw.vkGetAccelerationStructureMemoryRequirementsNV(s.Device.Handle, pInfo, pReqs)
+    let private getMemoryRequirements (memoryType : VkAccelerationStructureMemoryRequirementsTypeNV) (s : AccelerationStructure) =
+        native {
+            let! pInfo = VkAccelerationStructureMemoryRequirementsInfoNV(memoryType, s.Handle)
+            let! pReqs = VkMemoryRequirements2.Empty
+            VkRaw.vkGetAccelerationStructureMemoryRequirementsNV(s.Device.Handle, pInfo, pReqs)
 
-                return pReqs.Value.memoryRequirements
-            }
+            return pReqs.Value.memoryRequirements
+        }
 
-        let build, update =
-            get VkAccelerationStructureMemoryRequirementsTypeNV.BuildScratch,
-            get VkAccelerationStructureMemoryRequirementsTypeNV.UpdateScratch
+    let private getResultMemoryRequirements (s : AccelerationStructure) =
+        s |> getMemoryRequirements VkAccelerationStructureMemoryRequirementsTypeNV.Object
 
-        // Build and update should require the same type of memory
-        // but may differ in size? So we take the larger one as scratch
-        // buffer memory
-        assert (build.alignment = update.alignment)
-        assert (build.memoryTypeBits = update.memoryTypeBits)
+    let private getScratchBufferSize (s : AccelerationStructure) =
+        let build = s |> getMemoryRequirements VkAccelerationStructureMemoryRequirementsTypeNV.BuildScratch
+        let update = s|> getMemoryRequirements VkAccelerationStructureMemoryRequirementsTypeNV.UpdateScratch
 
-        get VkAccelerationStructureMemoryRequirementsTypeNV.Object,
-        if build.size > update.size then build else update
+        max build.size update.size
 
     let private bindResultMemory (s : AccelerationStructure) =
         native {
@@ -199,9 +194,8 @@ module AccelerationStructure =
         bindResultMemory s
         s
 
-    let private allocateScratchBuffer (requirements : VkMemoryRequirements) (s : AccelerationStructure) =
-        let memory = s.Device.GetMemory(requirements.memoryTypeBits, true)
-        s.ScratchBuffer <- Some <| Buffer.create VkBufferUsageFlags.RayTracingBitNv (int64 requirements.size) memory
+    let private allocateScratchBuffer (size : VkDeviceSize) (s : AccelerationStructure) =
+        s.ScratchBuffer <- Some <| Buffer.alloc VkBufferUsageFlags.RayTracingBitNv (int64 size) s.Device
         s
 
     let private retrieveHandle (s : AccelerationStructure) =
@@ -224,11 +218,9 @@ module AccelerationStructure =
         s
 
     let private allocateMemory (s : AccelerationStructure) =
-        let requirements = getMemoryRequirements s
-
         s |> freeMemory
-          |> allocateResultMemory (fst requirements)
-          |> allocateScratchBuffer (snd requirements)
+          |> allocateResultMemory (getResultMemoryRequirements s)
+          |> allocateScratchBuffer (getScratchBufferSize s)
           |> retrieveHandle
           |> ignore
 
